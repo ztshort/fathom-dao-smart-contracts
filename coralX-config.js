@@ -24,7 +24,7 @@ module.exports = {
           gasPrice: '0x3b9aca00',
         },
         goerli: {
-          host: "https://eth-goerli.g.alchemy.com/v2/3Rhf3lcJxkXTHqzVly4c3VNjkjVtCFZV",
+          host: "https://eth-goerli.g.alchemy.com/v2/EJnD6HgvGE8pr1L-TCJCBYLhxs6yuoMn",
           private_key: fs.readFileSync("./privateKey").toString(),
           gasPrice: '0x3b9aca00',
         },
@@ -41,7 +41,7 @@ module.exports = {
           optimizer: {
             enabled: true,
             details: { yul: false },
-            runs: 300,
+            runs: 200,
           },
           evmVersion: 'istanbul',
         },

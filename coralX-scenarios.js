@@ -50,10 +50,10 @@ module.exports = {
 
   deployDAOGoerli: [
     ['execute', '--path', 'scripts/migrations/governance', '--network', 'goerli'],
-    // ['execute', '--path', 'scripts/migrations/governance/5_deploy_staking_packages.js', '--network', 'goerli'],
-    // ['execute', '--path', 'scripts/migrations/governance/6_deploy_staking_tokens.js','--network', 'goerli'],
   ],
+
   
+
   migrateAndConfigureForTests: [
     ['compile'],
     ['execute', '--path', 'scripts/migrations/governance'],
