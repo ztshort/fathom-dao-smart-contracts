@@ -23,6 +23,11 @@ module.exports = {
           private_key: fs.readFileSync("./privateKey").toString(),
           gasPrice: '0x3b9aca00',
         },
+        goerli: {
+          host: "https://eth-goerli.g.alchemy.com/v2/3Rhf3lcJxkXTHqzVly4c3VNjkjVtCFZV",
+          private_key: fs.readFileSync("./privateKey").toString(),
+          gasPrice: '0x3b9aca00',
+        },
         fromEnv: {
           host: process.env.ETH_HOST, // export ETH_HOST=...
           private_key: process.env.ETH_PK, // export ETH_PK=...
@@ -36,7 +41,7 @@ module.exports = {
           optimizer: {
             enabled: true,
             details: { yul: false },
-            runs: 200,
+            runs: 300,
           },
           evmVersion: 'istanbul',
         },
