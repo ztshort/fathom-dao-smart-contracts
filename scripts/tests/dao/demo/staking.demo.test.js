@@ -363,7 +363,7 @@ describe("Staking Test", () => {
             await blockchain.mineBlock(await _getTimeStamp() + mineTimestamp);
             
             
-            let result = await stakingService.getLockInfo(staker_1,2);
+            let result = await stakingGetterService.getLockInfo(staker_1,2);
             const amountOfVMAINTknLock2 = result.amountOfveMAINTkn.toString()
             
             console.log(".........Unlocking lock position - 1 of Staker_1.......")
@@ -371,12 +371,12 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
 
             await shouldRevert(
-                stakingService.getLockInfo(staker_1,2),
+                stakingGetterService.getLockInfo(staker_1,2),
                 errTypes.revert,  
                 errorMessage
             );
 
-            result = await stakingService.getLockInfo(staker_1,1);
+            result = await stakingGetterService.getLockInfo(staker_1,1);
             assert(amountOfVMAINTknLock2, result.amountOfveMAINTkn.toString());
 
             await blockchain.mineBlock(await _getTimeStamp() + 20);
@@ -385,7 +385,7 @@ describe("Staking Test", () => {
 
         
         it("Should unlock completely locked positions for user - staker_2", async() => {
-            let result = await stakingService.getLockInfo(staker_2,1);
+            let result = await stakingGetterService.getLockInfo(staker_2,1);
             const beforeVOTEBalance  = (await veMainToken.balanceOf(staker_2)).toString()
             await stakingService.unlock(1, {from: staker_2});
             const afterVOTEBalance  = (await veMainToken.balanceOf(staker_2)).toString()
@@ -396,7 +396,7 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
             // The last lock possition should no longer be accesible
             await shouldRevert(
-                stakingService.getLockInfo(staker_2,1),
+                stakingGetterService.getLockInfo(staker_2,1),
                 errTypes.revert,  
                 errorMessage
             );
@@ -408,7 +408,7 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
 
             await shouldRevert(
-                stakingService.getLockInfo(staker_3,1),
+                stakingGetterService.getLockInfo(staker_3,1),
                 errTypes.revert,  
                 errorMessage
             );
@@ -562,7 +562,7 @@ describe("Staking Test", () => {
         //     await stakingService.claimRewards(streamId,lockId,{from:staker_2, gas: maxGasForTxn});
             
         //     //Getting params from contracts to calculate the expected rewards:
-        //     const lockInfo = await stakingService.getLockInfo(staker_2,1)
+        //     const lockInfo = await stakingGetterService.getLockInfo(staker_2,1)
         //     const positionStreamSharesBN = new web3.utils.toBN((await lockInfo.positionStreamShares).toString())
         //     const rewardsAmountTotal = new web3.utils.toBN(RewardProposalAmountForAStream)
         //     const oneYearBN = new web3.utils.toBN(oneYear)
@@ -749,7 +749,7 @@ describe("Staking Test", () => {
         //     const errorMessage = "out of index";
 
         //     await shouldRevert(
-        //         stakingService.getLockInfo(staker_3,lockId),
+        //         stakingGetterService.getLockInfo(staker_3,lockId),
         //         errTypes.revert,  
         //         errorMessage
         //     );

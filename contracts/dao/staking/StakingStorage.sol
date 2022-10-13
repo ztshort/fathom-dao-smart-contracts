@@ -55,4 +55,5 @@ contract StakingStorage is IStakingStorage {
     uint256 public maxLockPositions;
     address public govnContract;
     bool internal earlyWithdrawalFlag;
+    
 }

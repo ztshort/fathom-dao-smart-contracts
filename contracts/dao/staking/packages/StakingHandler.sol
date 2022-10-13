@@ -191,7 +191,8 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
         require(stream.status == StreamStatus.ACTIVE, "No Stream");
         stream.status = StreamStatus.INACTIVE;
         uint256 releaseRewardAmount = stream.rewardDepositAmount - stream.rewardClaimedAmount;
-        uint256 rewardTreasury = _getVaultBalance(stream.rewardToken);
+        uint256 rewardTreasury = IERC20(stream.rewardToken).balanceOf(vault);
+        
 
         IVault(vault).payRewards(
             streamFundReceiver,
@@ -333,25 +334,20 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
     function setMaxLockPositions(
         uint8 _maxLockPositions
     ) external override {
-        uint256 oldMaxLockPositions = maxLockPositions;
         maxLockPositions = _maxLockPositions;
-        emit MaxLockPositionsSet(oldMaxLockPositions, _maxLockPositions);
     }
 
     function setEarlyWithdrawalFlag(
         bool _flag
     ) external override onlyRole(GOVERNANCE_ROLE){
-        bool oldFlag = earlyWithdrawalFlag;
+        
         earlyWithdrawalFlag = _flag;
-        emit EarlyWithdrawalFlagSet(oldFlag, _flag);
     }
 
     function setTreasuryAddress(
         address _treasury 
     ) external override onlyRole(GOVERNANCE_ROLE){
-        address oldTreasury = treasury;
         treasury = _treasury;
-        emit TreasuryAddressSet(oldTreasury, treasury);
     }
 
     function setVOTETokenAddress(

@@ -4,9 +4,9 @@
 
 pragma solidity ^0.8.13;
 import "./XDCStakingStorage.sol";
-import "../interfaces/IStakingEvents.sol";
+import "./interfaces/IXDCStakingEvents.sol";
 
-contract XDCStakingRewardsInternals is XDCStakingStorage, IStakingEvents {
+contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
     // solhint-disable not-rely-on-time
     /**
      @dev Updates the stream rewards schedules.

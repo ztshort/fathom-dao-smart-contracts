@@ -8,6 +8,6 @@ import "./IXDCStakingGetter.sol";
 import "./IXDCStakingHandler.sol";
 import "./IXDCStakingStorage.sol";
 import "./IXDCStakingSetter.sol";
-import "../../utils/interfaces/IAdminPausable.sol";
+import "../../staking/utils/interfaces/IAdminPausable.sol";
 
 interface IXDCStaking is IXDCStakingGetter, IXDCStakingHandler, IXDCStakingStorage, IXDCStakingSetter, IAdminPausable {}

@@ -3,37 +3,31 @@
 // Copyright Fathom 2022
 
 pragma solidity ^0.8.13;
-import "../../../dao/governance/token/ERC20/IERC20.sol";
-import "../../governance/interfaces/IVeMainToken.sol";
+import "../governance/token/ERC20/IERC20.sol";
+import "../governance/interfaces/IVeMainToken.sol";
 import "./XDCStakingRewardsInternals.sol";
-import "../interfaces/IStakingEvents.sol";
-import "../../../common/libraries/BytesHelper.sol";
-import "../vault/interfaces/IVault.sol";
-import "../library/BoringMath.sol";
+import "../staking/vault/interfaces/IVault.sol";
+import "../staking/library/BoringMath.sol";
 contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     // solhint-disable not-rely-on-time
-    using BytesHelper for *;
 
     /**
      * @dev internal function to initialize the staking contracts.
      */
     function _initializeStaking(
         address _mainTkn,
-        address voteMAINTkn,
         Weight memory _weight,
         address _vault,
         uint256 _voteShareCoef,
         uint256 _voteLockWeight,
         uint256 _maxLockPositions
     ) internal {
-        require(_mainTkn != address(0x00), "main addr zero");
-        require(voteMAINTkn != address(0x00), "vote addr zero");
-        require(_vault != address(0x00), "vaultAddr zero");
+        require(_mainTkn != address(0x00), "zero main addrr");
+        require(_vault != address(0x00), "zero vault addr");
 
         require(_weight.maxWeightShares > _weight.minWeightShares, "invalid share wts");
         require(_weight.maxWeightPenalty > _weight.minWeightPenalty, "invalid penalty wts");
         mainTkn = _mainTkn;
-        veMAINTkn = voteMAINTkn;
         weight = _weight;
         vault = _vault;
         voteShareCoef = _voteShareCoef;
@@ -55,19 +49,14 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     ) internal {
         //@notice: newLock.end is always greater than block.timestamp
         uint256 lockPeriod = _newLocked.end - block.timestamp;
-        uint256 nVeMainTkn = _updateGovnWeightLock(amount, lockPeriod, account);
-        _newLocked.amountOfveMAINTkn += BoringMath.to128(nVeMainTkn);
+        uint256 lockPeriodWeight = _calculateLockWeight(amount, lockPeriod);
         if (amount > 0) {
             _newLocked.amountOfMAINTkn += BoringMath.to128(amount);
         }
         locks[account].push(_newLocked);
         //+1 index
         uint256 newLockId = locks[account].length;
-        _stake(account, amount, nVeMainTkn, newLockId);
-        
-        if (nVeMainTkn > 0) {
-            IVeMainToken(veMAINTkn).mint(account, nVeMainTkn);
-        }
+        _stake(account, amount, lockPeriodWeight, newLockId);
     }
 
     /**
@@ -97,17 +86,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         User storage userAccount = users[account];
         uint256 nLockedVeMainTkn = updateLock.amountOfveMAINTkn;
         
-        _updateGovnWeightUnlock(updateLock, userAccount);
         _unstake(amount, updateLock, stakeValue, lockId, account);
-
-        /// @notice This is for dust mitigation, so that even if the
-        //  user does not hae enough veMAINTkn, it is still able to burn and unlock
-        //  takes a bit of gas
-        uint256 balance = IERC20(veMAINTkn).balanceOf(account);
-        if (balance < nLockedVeMainTkn) {
-            nLockedVeMainTkn = balance;
-        }
-        IVeMainToken(veMAINTkn).burn(account, nLockedVeMainTkn);
     }
 
     /**
@@ -147,7 +126,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
             userAccount.rpsDuringLastClaimForLock[lockId][i] = streams[i].rps;
         }
 
-        emit Staked(account, weightedAmountOfSharesPerStream, nVeMainTkn, lockId);
+        emit Staked(account, weightedAmountOfSharesPerStream, lockId);
     }
 
     /// WARNING: rewards are not claimed during unstake.
@@ -213,46 +192,6 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         require(userAccount.pendings[0] >= penalty, "penalty high");
         userAccount.pendings[0] -= penalty;
         totalPenaltyBalance += penalty;
-    }
-
-    /**
-     * @dev Updates the balance of Vote token of the user for locking
-     * @notice Calculation of number of vote tokens is based upon amount locked and it's time period
-     * @param amount The amount of Main Tokens for which vote tokens is to released
-     * @param lockingPeriod The period for which the tokens are locked
-     * @param account The account for which the tokens are locked
-     */
-    function _updateGovnWeightLock(
-        uint256 amount,
-        uint256 lockingPeriod,
-        address account
-    ) internal returns (uint256) {
-        User storage userAccount = users[account];
-        uint256 nVeMainTkn = _calculateGovnToken(amount, lockingPeriod); //maxVoteTokens;
-        userAccount.veMAINTknBalance += BoringMath.to128(nVeMainTkn);
-        totalAmountOfveMAINTkn += nVeMainTkn;
-
-        return nVeMainTkn;
-    }
-
-    /**
-     * @dev Updates balances of vote tokens for Locks and user accounts during unlock
-     * @notice completely sets the balance of vote tokens to zero for a lock
-     * @notice sets remaining balance for the user account
-     */
-    function _updateGovnWeightUnlock(LockedBalance storage updateLock, User storage userAccount) internal {
-        uint256 nVeMainTkn = updateLock.amountOfveMAINTkn;
-        ///@notice if you unstake, early or partial or complete,
-        ///        the number of vote tokens for lock position is set to zero
-        updateLock.amountOfveMAINTkn = 0;
-        totalAmountOfveMAINTkn -= nVeMainTkn;
-        uint256 remainingvMAINTknBalance = 0;
-
-        //this check to not overflow:
-        if (userAccount.veMAINTknBalance > nVeMainTkn) {
-            remainingvMAINTknBalance = userAccount.veMAINTknBalance - nVeMainTkn;
-        }
-        userAccount.veMAINTknBalance = BoringMath.to128(remainingvMAINTknBalance);
     }
 
 
@@ -371,7 +310,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @dev calculate the governance tokens to release
      * @notice
      */
-    function _calculateGovnToken(uint256 amount, uint256 lockingPeriod) internal view returns (uint256 nVeMainTkn) {
+    function _calculateLockWeight(uint256 amount, uint256 lockingPeriod) internal view returns (uint256 nVeMainTkn) {
         //voteWeight = 365 * 24 * 60 * 60;
         nVeMainTkn = (amount * lockingPeriod * POINT_MULTIPLIER) / voteLockWeight / POINT_MULTIPLIER;
         return nVeMainTkn;

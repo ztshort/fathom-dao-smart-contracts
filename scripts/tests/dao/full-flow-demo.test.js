@@ -225,6 +225,11 @@ describe("DAO Demo", () => {
             "VaultPackage"
         );
 
+        stakingGetterService = await artifacts.initializeInterfaceAt(
+            "StakingGettersHelper",
+            "StakingGettersHelper"
+        )
+
         mainTknToken = await artifacts.initializeInterfaceAt("ERC20MainToken","ERC20MainToken");
         streamReward1 = await artifacts.initializeInterfaceAt("ERC20Rewards1","ERC20Rewards1");
         //TODO:
@@ -456,7 +461,7 @@ describe("DAO Demo", () => {
             await stakingService.claimRewards(streamId,lockId,{from:staker_2, gas: maxGasForTxn});
             
             //Getting params from contracts to calculate the expected rewards:
-            const lockInfo = await stakingService.getLockInfo(staker_2,1)
+            const lockInfo = await stakingGetterService.getLockInfo(staker_2,1)
             const positionStreamSharesBN = new web3.utils.toBN((await lockInfo.positionStreamShares).toString())
             const rewardsAmountTotal = new web3.utils.toBN(RewardProposalAmountForAStream)
             const oneYearBN = new web3.utils.toBN(oneYear)

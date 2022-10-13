@@ -62,7 +62,4 @@ contract StakingGettersHelper  is IStakingGetterHelper{
         return totalDeposit;
     }
 
-
-
-
 }

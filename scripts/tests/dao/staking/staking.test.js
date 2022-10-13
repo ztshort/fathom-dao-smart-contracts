@@ -151,6 +151,11 @@ describe("Staking Test", () => {
             "VaultPackage"
         );
 
+        stakingGetterService = await artifacts.initializeInterfaceAt(
+            "StakingGettersHelper",
+            "StakingGettersHelper"
+        )
+
         mainTknToken = await artifacts.initializeInterfaceAt("ERC20MainToken","ERC20MainToken");
         streamReward1 = await artifacts.initializeInterfaceAt("ERC20Rewards1","ERC20Rewards1");
         streamReward2 = await artifacts.initializeInterfaceAt("ERC20Rewards2","ERC20Rewards2");
@@ -367,19 +372,19 @@ describe("Staking Test", () => {
             await blockchain.mineBlock(timestamp + 24 * 60 * 60 + 10);
             
 
-            let result = await stakingService.getLockInfo(staker_1,3);
+            let result = await stakingGetterService.getLockInfo(staker_1,3);
             const amountOfVMAINTknLock3 = result.amountOfveMAINTkn.toString()
 
             await stakingService.unlock(1, {from : staker_1});
             const errorMessage = "out of index";
 
             await shouldRevert(
-                stakingService.getLockInfo(staker_1,3),
+                stakingGetterService.getLockInfo(staker_1,3),
                 errTypes.revert,  
                 errorMessage
             );
 
-            result = await stakingService.getLockInfo(staker_1,1);
+            result = await stakingGetterService.getLockInfo(staker_1,1);
             
             assert(amountOfVMAINTknLock3, result.amountOfveMAINTkn.toString());
             await blockchain.mineBlock(await _getTimeStamp() + 20);
@@ -387,7 +392,7 @@ describe("Staking Test", () => {
 
         
         it("Should unlock completely locked positions for user - staker_2", async() => {
-            let result = await stakingService.getLockInfo(staker_2,1);
+            let result = await stakingGetterService.getLockInfo(staker_2,1);
             const beforeVOTEBalance  = (await veMainToken.balanceOf(staker_2)).toString()
             await stakingService.unlock(1, {from: staker_2});
             const afterVOTEBalance  = (await veMainToken.balanceOf(staker_2)).toString()
@@ -398,7 +403,7 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
             // The last lock possition should no longer be accesible
             await shouldRevert(
-                stakingService.getLockInfo(staker_2,1),
+                stakingGetterService.getLockInfo(staker_2,1),
                 errTypes.revert,  
                 errorMessage
             );
@@ -412,7 +417,7 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
 
             await shouldRevert(
-                stakingService.getLockInfo(staker_3,1),
+                stakingGetterService.getLockInfo(staker_3,1),
                 errTypes.revert,  
                 errorMessage
             );
@@ -427,7 +432,7 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
 
             await shouldRevert(
-                stakingService.getLockInfo(staker_4,1),
+                stakingGetterService.getLockInfo(staker_4,1),
                 errTypes.revert,  
                 errorMessage
             );
@@ -571,7 +576,7 @@ describe("Staking Test", () => {
             const RewardProposalAmountForAStream = web3.utils.toWei('1000', 'ether');
             
             await stakingService.claimRewards(2,lockId,{from:staker_2, gas: maxGasForTxn});
-            const lockInfo = await stakingService.getLockInfo(staker_2,1)
+            const lockInfo = await stakingGetterService.getLockInfo(staker_2,1)
             const positionStreamSharesBN = new web3.utils.toBN((await lockInfo.positionStreamShares).toString())
             const rewardsAmountTotal = new web3.utils.toBN(RewardProposalAmountForAStream)
             const oneYearBN = new web3.utils.toBN(oneYear)
@@ -857,7 +862,7 @@ describe("Staking Test", () => {
             const errorMessage = "out of index";
 
             await shouldRevert(
-                stakingService.getLockInfo(staker_3,lockId),
+                stakingGetterService.getLockInfo(staker_3,lockId),
                 errTypes.revert,  
                 errorMessage
             );

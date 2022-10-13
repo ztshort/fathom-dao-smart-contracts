@@ -6,12 +6,9 @@ pragma solidity ^0.8.13;
 import "./XDCStakingStorage.sol";
 import "./interfaces/IXDCStakingHandler.sol";
 import "./XDCStakingInternals.sol";
-import "../vault/interfaces/IVault.sol";
-import "../utils/ReentrancyGuard.sol";
-import "../utils/AdminPausable.sol";
-import "../interfaces/IStakingSetter.sol";
-
-
+import "../staking/vault/interfaces/IVault.sol";
+import "../staking/utils/ReentrancyGuard.sol";
+import "../staking/utils/AdminPausable.sol";
 
 // solhint-disable not-rely-on-time
 contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
@@ -34,14 +31,10 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
     * @param scheduleTimes init schedules times
     * @param scheduleRewards init schedule rewards
     * @param tau release time constant per stream
-    * @param _voteShareCoef the weight of vote tokens during shares distribution.
-             Should be passed in proportion of 1000. ie, if you want weight of 2, have to pass 2000
-    * @param _voteLockWeight the weight that determines the amount of vote tokens to release
     */
     function initializeStaking(
         address _vault,
         address _mainTkn,
-        address _veMAINTkn,
         Weight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
@@ -61,7 +54,7 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
             scheduleRewards,
             tau
         );
-        _initializeStaking(_mainTkn, _veMAINTkn, _weight, _vault, _voteShareCoef, _voteLockWeight, _maxLocks);
+        _initializeStaking(_mainTkn, _weight, _vault,_voteShareCoef, _voteLockWeight, _maxLocks);
         require(IVault(vault).isSupportedToken(_mainTkn), "Unsupported token");
         pausableInit(0);
         _grantRole(STREAM_MANAGER_ROLE, msg.sender);

@@ -8,13 +8,10 @@ import "../../../dao/governance/token/ERC20/IERC20.sol";
 import "../../governance/interfaces/IVeMainToken.sol";
 import "./RewardsInternals.sol";
 import "../interfaces/IStakingEvents.sol";
-import "../../../common/libraries/BytesHelper.sol";
 import "../vault/interfaces/IVault.sol";
 import "../library/BoringMath.sol";
 contract StakingInternals is StakingStorage, RewardsInternals {
     // solhint-disable not-rely-on-time
-    using BytesHelper for *;
-
     /**
      * @dev internal function to initialize the staking contracts.
      */
@@ -312,7 +309,6 @@ contract StakingInternals is StakingStorage, RewardsInternals {
         ///@notice This formula makes it so that both the time locked for Main token and the amount of token locked
         ///        is used to calculate rewards
         uint256 shares = amountOfMAINTknShares + (voteShareCoef * nVeMainTkn) / 1000;
-
         uint256 slopeStart = streams[0].schedule.time[0] + ONE_MONTH;
         uint256 slopeEnd = slopeStart + ONE_YEAR;
         if (timestamp <= slopeStart) return shares * weight.maxWeightShares;
@@ -343,10 +339,6 @@ contract StakingInternals is StakingStorage, RewardsInternals {
         }
 
         return _amountOfShares;
-    }
-
-    function _getVaultBalance(address token) internal view returns (uint256) {
-        return IERC20(token).balanceOf(vault);
     }
 
     /**

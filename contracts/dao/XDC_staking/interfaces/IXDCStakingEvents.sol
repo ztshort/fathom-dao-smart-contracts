@@ -6,7 +6,7 @@ pragma solidity ^0.8.13;
 import "./IXDCStakingSetterEvents.sol";
 
 interface IXDCStakingEvents is IXDCStakingSetterEvents {
-    event Staked(address account, uint256 indexed streamShares, uint256 indexed nVEMainTkn, uint256 indexed lockId);
+    event Staked(address account, uint256 indexed streamShares, uint256 indexed lockId);
 
     event StreamProposed(
         uint256 indexed streamId,

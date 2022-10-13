@@ -11,7 +11,6 @@ interface IXDCStakingHandler {
     function initializeStaking(
         address _vault,
         address _mainTkn,
-        address _veMAINTkn,
         Weight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
@@ -19,8 +18,7 @@ interface IXDCStakingHandler {
         uint256 tau,
         uint256 _voteShareCoef,
         uint256 _voteLockWeight,
-        uint256 _maxLocks
-    ) external;
+        uint256 _maxLocks) external;
 
     function proposeStream(
         address streamOwner,
