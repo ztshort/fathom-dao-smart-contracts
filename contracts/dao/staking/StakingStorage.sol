@@ -4,10 +4,10 @@
 
 pragma solidity ^0.8.13;
 
-import "./XDCStakingStructs.sol";
+import "./StakingStructs.sol";
 import "./interfaces/IStakingStorage.sol";
 
-contract XDCStakingStorage is IStakingStorage {
+contract StakingStorage is IStakingStorage {
     uint256 internal constant RPS_MULTIPLIER = 1e31;
     uint256 internal constant POINT_MULTIPLIER = 1e18;
     uint256 internal constant ONE_MONTH = 2629746;

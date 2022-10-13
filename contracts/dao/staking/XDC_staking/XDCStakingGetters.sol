@@ -3,11 +3,11 @@
 // Copyright Fathom 2022
 
 pragma solidity ^0.8.13;
-import "../XDCStakingStorage.sol";
-import "../interfaces/IStakingGetter.sol";
+import "./XDCStakingStorage.sol";
+import "./interfaces/IXDCStakingGetter.sol";
 import "./XDCStakingInternals.sol";
 
-contract XDCStakingInitPackageGetter is StakingStorage, IStakingGetter, XDCStakingInternals {
+contract XDCStakingInitPackageGetter is XDCStakingStorage, IXDCStakingGetter, XDCStakingInternals {
     function getLatestRewardsPerShare(uint256 streamId) external view override returns (uint256) {
         return _getLatestRewardsPerShare(streamId);
     }

@@ -3,7 +3,6 @@
 // Copyright Fathom 2022
 
 pragma solidity ^0.8.13;
-import "../XDCStakingStorage.sol";
 import "../../../dao/governance/token/ERC20/IERC20.sol";
 import "../../governance/interfaces/IVeMainToken.sol";
 import "./XDCStakingRewardsInternals.sol";
@@ -11,7 +10,7 @@ import "../interfaces/IStakingEvents.sol";
 import "../../../common/libraries/BytesHelper.sol";
 import "../vault/interfaces/IVault.sol";
 import "../library/BoringMath.sol";
-contract XDCStakingInternals is StakingStorage, XDCStakingRewardsInternals {
+contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     // solhint-disable not-rely-on-time
     using BytesHelper for *;
 

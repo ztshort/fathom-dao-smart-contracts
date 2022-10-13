@@ -3,10 +3,10 @@
 // Copyright Fathom 2022
 
 pragma solidity ^0.8.13;
-import "../StakingStorage.sol";
+import "./XDCStakingStorage.sol";
 import "../interfaces/IStakingEvents.sol";
 
-contract XDCStakingRewardsInternals is StakingStorage, IStakingEvents {
+contract XDCStakingRewardsInternals is XDCStakingStorage, IStakingEvents {
     // solhint-disable not-rely-on-time
     /**
      @dev Updates the stream rewards schedules.

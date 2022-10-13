@@ -3,9 +3,8 @@
 // Copyright Fathom 2022
 
 pragma solidity ^0.8.13;
-import "../XDCStakingStorage.sol";
-import "../XDCStakingStorage.sol";
-import "../interfaces/IStakingHandler.sol";
+import "./XDCStakingStorage.sol";
+import "./interfaces/IXDCStakingHandler.sol";
 import "./XDCStakingInternals.sol";
 import "../vault/interfaces/IVault.sol";
 import "../utils/ReentrancyGuard.sol";
@@ -15,7 +14,7 @@ import "../interfaces/IStakingSetter.sol";
 
 
 // solhint-disable not-rely-on-time
-contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  StakingInternals, ReentrancyGuard, 
+contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
                             AdminPausable {
 
     bytes32 public constant STREAM_MANAGER_ROLE =
