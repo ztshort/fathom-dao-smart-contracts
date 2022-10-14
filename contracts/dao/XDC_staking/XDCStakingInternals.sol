@@ -70,23 +70,19 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @notice If the lock position is completely unlocked then the last lock is swapped with current locked
      * and last lock is popped off.
      * @param lockId the lock id of the locked position to unlock
-     * @param amount the amount of XDC Tokens to unlock
-     * @param stakeValue the total Stake Value that a lock position has. Used for partial unlocking
-     * @param updateLock the lockedBalance to unlock
      * @param account The address of owner of the lock
      */
     function _unlock(
         uint256 lockId,
-        uint256 amount,
-        uint256 stakeValue,
-        LockedBalance storage updateLock,
         address account
     ) internal {
 
         User storage userAccount = users[account];
+        LockedBalance storage updateLock = locks[account][lockId - 1];
+        uint256 stakeValue = (totalAmountOfStakedXDC * updateLock.XDCShares) / totalXDCShares;
         uint256 nLockedVeXDC = updateLock.amountOfveXDC;
         
-        _unstake(amount, updateLock, stakeValue, lockId, account);
+        _unstake(updateLock, stakeValue, lockId, account);
     }
 
     /**
@@ -135,14 +131,12 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     /// `_before()` must be called before `_unstake` to update streams rps
     /**
      * @dev Unstakes the amount that you want to unstake and reapplies the shares to remaining stake value
-     * @param amount The amount to unstake
      * @param updateLock The storage reference to the lock which gets updated
      * @param stakeValue The total stake of the lock position
      * @param lockId The lock id of the lock position
      * @param account The account whose lock position is to be unstaked
      */
     function _unstake(
-        uint256 amount,
         LockedBalance storage updateLock,
         uint256 stakeValue,
         uint256 lockId,
@@ -154,9 +148,9 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         totalStreamShares -=  updateLock.positionStreamShares;
         totalXDCShares -= updateLock.XDCShares;
 
-        userAccount.pendings[0] += amount;
+        userAccount.pendings[0] += stakeValue;
         userAccount.releaseTime[0] = block.timestamp + streams[0].tau;
-        emit Unstaked(account, amount, lockId);
+        emit Unstaked(account, stakeValue, lockId);
 
         _removeLockPosition(userAccount, account, lockId);
     }
@@ -168,20 +162,16 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      @notice The penalty is decreased from the pendings of XDC stream
      @notice Early unlock completely unlocks your whole position and vote tokens
      @param lockId The lock id of lock position to early unlock
-     @param amount The total amount of whole lock position
-     @param stakeValue The total stake value of whole lock position (stakeValue = amount here)
-     @param lock The storage lock that is unlocked and updated
      @param account The account whose lock position is unlocked early
      */
     function _earlyUnlock(
         uint256 lockId,
-        uint256 amount,
-        uint256 stakeValue,
-        LockedBalance storage lock,
         address account
     ) internal {
+        LockedBalance storage lock = locks[account][lockId - 1];
         uint256 lockEnd = lock.end;
-        _unlock(lockId, amount, stakeValue, lock, account);
+        uint256 amount = (totalAmountOfStakedXDC * lock.XDCShares) / totalXDCShares;
+        _unlock(lockId, account);
 
         uint256 weighingCoef = _weightedPenalty(lockEnd, block.timestamp);
 

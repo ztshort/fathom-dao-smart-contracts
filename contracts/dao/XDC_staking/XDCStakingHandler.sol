@@ -213,19 +213,11 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
      * @param lockId The lockId to unlock completely
      */
     function unlock(uint256 lockId) external override nonReentrant pausable(1) {
-        require(lockId != 0, "lockId 0");
-        require(lockId <= locks[msg.sender].length, "invalid lockid");
-
         LockedBalance storage lock = locks[msg.sender][lockId - 1];
-        require(lock.amountOfXDC > 0, "no lock amount");
+        _isItUnlockable(lockId);
         require(lock.end <= block.timestamp, "lock not open");
-        require(lock.owner == msg.sender, "bad owner");
-
         _before();
-        //_moveAllRewardsToPending(msg.sender, lockId);
-        uint256 stakeValue = (totalAmountOfStakedXDC * lock.XDCShares) / totalXDCShares;
-
-        _unlock(lockId, stakeValue, stakeValue, lock, msg.sender);
+        _unlock(lockId, msg.sender);
     }
 
     /**
@@ -233,17 +225,11 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
      * @param lockId The lock id to unlock early
      */
     function earlyUnlock(uint256 lockId) external override nonReentrant pausable(1) {
-        require(earlyWithdrawalFlag == true, "no early withdraw");
-        require(lockId != 0, "lockId 0");
-        require(lockId <= locks[msg.sender].length, "invalid lockid");
         LockedBalance storage lock = locks[msg.sender][lockId - 1];
-        require(lock.amountOfXDC > 0, "no lock amount");
+        _isItUnlockable(lockId);
         require(lock.end > block.timestamp, "lock opened");
-        require(lock.owner == msg.sender, "bad owner");
         _before();
-        //_moveAllRewardsToPending(msg.sender, lockId);
-        uint256 stakeValue = (totalAmountOfStakedXDC * lock.XDCShares) / totalXDCShares;
-        _earlyUnlock(lockId, stakeValue, stakeValue, lock, msg.sender);
+        _earlyUnlock(lockId, msg.sender);
         
     }
     /**
@@ -321,6 +307,12 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
 
         require(balanceBefore - IWXDC(wXDC).balanceOf(address(this))  == amount,"xdc not withdrawn");
     }
-    
+    function _isItUnlockable(uint256 lockId) internal view  {
+        require(lockId != 0, "lockId 0");
+        require(lockId <= locks[msg.sender].length, "invalid lockid");
+        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        require(lock.amountOfXDC > 0, "no lock amount");
+        require(lock.owner == msg.sender, "bad owner");
+    }
  
 }
