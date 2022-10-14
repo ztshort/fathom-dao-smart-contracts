@@ -21,11 +21,11 @@ contract XDCStakingStorage is IXDCStakingStorage {
     uint256 internal touchedAt;
 
     ///@notice The below three are used for autocompounding feature and weighted shares
-    uint256 public override totalAmountOfStakedMAINTkn;
-    uint256 public override totalMAINTknShares;
+    uint256 public override totalAmountOfStakedXDC;
+    uint256 public override totalXDCShares;
     uint256 public override totalStreamShares;
-    ///@notice veMAINTkn -> vote Token
-    uint256 public override totalAmountOfveMAINTkn;
+    ///@notice veXDC -> vote Token
+    uint256 public override totalAmountOfveXDC;
 
     uint256 internal totalPenaltyReleased;
     uint256 public override totalPenaltyBalance;
@@ -40,7 +40,7 @@ contract XDCStakingStorage is IXDCStakingStorage {
     ///_voteLockWeight the weight that determines the amount of vote tokens to release
     uint256 internal voteLockWeight;
    
-    address public mainTkn;
+    address public wXDC;
 
     address public vault;
 

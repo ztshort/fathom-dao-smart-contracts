@@ -10,7 +10,7 @@ interface IXDCStakingHandler {
 
     function initializeStaking(
         address _vault,
-        address _mainTkn,
+        address _XDC,
         Weight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
@@ -47,6 +47,13 @@ interface IXDCStakingHandler {
     function withdrawAll() external;
 
     function claimAllLockRewardsForStream(uint256 streamId) external;
+
+     /// @notice Create a new lock.
+    /// @dev This will crate a new lock and deposit XDC to XDCStaking
+    
+    function createLock(uint256 unlockTime) external payable;
+    function unlock(uint256 lockId) external;
+    function earlyUnlock(uint256 lockId) external;
 
 
 }

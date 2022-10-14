@@ -4,7 +4,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./IERC20.sol";
+import "../../governance/token/ERC20/IERC20.sol";
 
 interface IWXDC is IERC20{
         function deposit() payable external;

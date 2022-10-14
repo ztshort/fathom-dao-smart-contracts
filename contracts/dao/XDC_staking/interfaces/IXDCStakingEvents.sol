@@ -18,7 +18,7 @@ interface IXDCStakingEvents is IXDCStakingSetterEvents {
     event StreamOwnerRewardReleased(
         uint256 indexed streamId,
         address indexed streamOwner,
-        uint256 mainTknStreamOwnerReward
+        uint256 XDCStreamOwnerReward
     );
 
     event Released(uint256 indexed streamId, address indexed user, uint256 pendingAmount);

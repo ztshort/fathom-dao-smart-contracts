@@ -9,6 +9,7 @@ import "./XDCStakingInternals.sol";
 import "../staking/vault/interfaces/IVault.sol";
 import "../staking/utils/ReentrancyGuard.sol";
 import "../staking/utils/AdminPausable.sol";
+import "./tokens/IWXDC.sol";
 
 // solhint-disable not-rely-on-time
 contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
@@ -19,22 +20,22 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     
     /**
-    * @dev initialize the contract and deploys the first stream of rewards(MAINTkn)
+    * @dev initialize the contract and deploys the first stream of rewards(XDC)
     * @dev initializable only once due to stakingInitialised flag
     * @notice By calling this function, the deployer of this contract must
-    * make sure that the MAINTkn Rewards amount was deposited to the treasury contract
-    * before initializing of the default MAINTkn Stream
-    * @param _vault The Vault address to store MAINTkn and rewards tokens
-    * @param _mainTkn token contract address
+    * make sure that the XDC Rewards amount was deposited to the treasury contract
+    * before initializing of the default XDC Stream
+    * @param _vault The Vault address to store XDC and rewards tokens
+    * @param _wXDC token contract address
     * @param _weight Weighting coefficient for shares and penalties
-    * @param streamOwner the owner and manager of the MAINTkn stream
+    * @param streamOwner the owner and manager of the XDC stream
     * @param scheduleTimes init schedules times
     * @param scheduleRewards init schedule rewards
     * @param tau release time constant per stream
     */
     function initializeStaking(
         address _vault,
-        address _mainTkn,
+        address _wXDC,
         Weight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
@@ -47,15 +48,15 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         require(!stakingInitialised, "Already intiailised");
         _validateStreamParameters(
             streamOwner,
-            _mainTkn,
+            _wXDC,
             scheduleRewards[0],
             scheduleRewards[0],
             scheduleTimes,
             scheduleRewards,
             tau
         );
-        _initializeStaking(_mainTkn, _weight, _vault,_voteShareCoef, _voteLockWeight, _maxLocks);
-        require(IVault(vault).isSupportedToken(_mainTkn), "Unsupported token");
+        _initializeStaking(_wXDC, _weight, _vault,_voteShareCoef, _voteLockWeight, _maxLocks);
+        require(IVault(vault).isSupportedToken(_wXDC), "Unsupported token");
         pausableInit(0);
         _grantRole(STREAM_MANAGER_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);
@@ -65,7 +66,7 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
             Stream({
                 owner: streamOwner,
                 manager: streamOwner,
-                rewardToken: mainTkn,
+                rewardToken: wXDC,
                 maxDepositAmount: 0,
                 minDepositAmount: 0,
                 rewardDepositAmount: 0,
@@ -78,8 +79,8 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         );
         earlyWithdrawalFlag = true;
         stakingInitialised = true;
-        emit StreamProposed(streamId, streamOwner, _mainTkn, scheduleRewards[0]);
-        emit StreamCreated(streamId, streamOwner, _mainTkn, scheduleRewards[0]);
+        emit StreamProposed(streamId, streamOwner, _wXDC, scheduleRewards[0]);
+        emit StreamCreated(streamId, streamOwner, _wXDC, scheduleRewards[0]);
     }
 
     
@@ -101,7 +102,7 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
             scheduleRewards,
             tau
         );
-        // check mainTkn token address is supportedToken in the treasury
+        // check wXDC token address is supportedToken in the treasury
         require(IVault(vault).isSupportedToken(rewardToken), "Unsupport Token");
         Schedule memory schedule = Schedule(scheduleTimes, scheduleRewards);
         uint256 streamId = streams.length;
@@ -178,6 +179,73 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
 
         emit StreamRemoved(streamId, stream.owner, stream.rewardToken);
     }
+     
+
+    /**
+     * @dev Creates a new lock position with lock period of unlock time
+     * @param unlockTime the locking period
+     */
+   
+    function createLock(uint256 unlockTime) external payable override nonReentrant pausable(1) {
+        require(locks[msg.sender].length <= maxLockPositions, "max locks");
+        uint256 xdcAmount = msg.value;
+        
+        require(xdcAmount > 0, "amount 0");
+        require(unlockTime > block.timestamp, "bad lock time");
+        require(unlockTime <= block.timestamp + MAX_LOCK, "max 1 year");
+
+        _before();
+        LockedBalance memory _newLock = LockedBalance({
+            amountOfXDC: 0,
+            amountOfveXDC: 0,
+            XDCShares: 0,
+            positionStreamShares: 0,
+            end: BoringMath.to64(unlockTime),
+            owner: msg.sender
+        });
+        _lock(msg.sender, _newLock, xdcAmount);
+        wrapXDC(xdcAmount);
+    }
+
+    /**
+     * @dev This function unlocks the whole position of the lock id.
+     * @notice stakeValue is calcuated to balance the shares calculation
+     * @param lockId The lockId to unlock completely
+     */
+    function unlock(uint256 lockId) external override nonReentrant pausable(1) {
+        require(lockId != 0, "lockId 0");
+        require(lockId <= locks[msg.sender].length, "invalid lockid");
+
+        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        require(lock.amountOfXDC > 0, "no lock amount");
+        require(lock.end <= block.timestamp, "lock not open");
+        require(lock.owner == msg.sender, "bad owner");
+
+        _before();
+        //_moveAllRewardsToPending(msg.sender, lockId);
+        uint256 stakeValue = (totalAmountOfStakedXDC * lock.XDCShares) / totalXDCShares;
+
+        _unlock(lockId, stakeValue, stakeValue, lock, msg.sender);
+    }
+
+    /**
+     * @dev This funciton allows for earlier withdrawal but with penalty
+     * @param lockId The lock id to unlock early
+     */
+    function earlyUnlock(uint256 lockId) external override nonReentrant pausable(1) {
+        require(earlyWithdrawalFlag == true, "no early withdraw");
+        require(lockId != 0, "lockId 0");
+        require(lockId <= locks[msg.sender].length, "invalid lockid");
+        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        require(lock.amountOfXDC > 0, "no lock amount");
+        require(lock.end > block.timestamp, "lock opened");
+        require(lock.owner == msg.sender, "bad owner");
+        _before();
+        //_moveAllRewardsToPending(msg.sender, lockId);
+        uint256 stakeValue = (totalAmountOfStakedXDC * lock.XDCShares) / totalXDCShares;
+        _earlyUnlock(lockId, stakeValue, stakeValue, lock, msg.sender);
+        
+    }
     /**
      * @dev This function claims rewards of a stream for a lock position and adds to pending of user.
      * @param streamId The id of the stream to claim rewards from
@@ -226,11 +294,33 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         uint256 streamsLength = streams.length;
         for (uint256 i = 0; i < streamsLength; i++) {
             if (userAccount.pendings[i] != 0 && block.timestamp > userAccount.releaseTime[i]) {
+                
                 _withdraw(i);
             }
         }
     }
 
+    function wrapXDC(
+        uint256 amount
+    )internal  {
+        uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
+        if (amount != 0){
+            IWXDC(wXDC).deposit{value: amount}();
+        }
+        require(IWXDC(wXDC).balanceOf(address(this)) - balanceBefore == amount,"xdc not deposited");
+    }
+
+    function unwrapXDC(
+        uint256 amount
+    )internal  {
+        uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
+        if (amount != 0){
+            IWXDC(wXDC).withdraw(amount);
+            payable(msg.sender).transfer(amount);
+        }
+
+        require(balanceBefore - IWXDC(wXDC).balanceOf(address(this))  == amount,"xdc not withdrawn");
+    }
     
  
 }

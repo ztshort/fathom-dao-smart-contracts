@@ -35,7 +35,7 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
         require(streamId != 0, "REWARDS_COMPOUND");
         require(streams[streamId].status == StreamStatus.ACTIVE, "inactive or proposed");
         User storage userAccount = users[account];
-        require(lock.mainTknShares != 0, "Lock No Stake");
+        require(lock.XDCShares != 0, "Lock No Stake");
         uint256 reward = ((streams[streamId].rps - userAccount.rpsDuringLastClaimForLock[lockId][streamId]) *
             lock.positionStreamShares) / RPS_MULTIPLIER;
 
@@ -78,8 +78,8 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
     function _before() internal {
         if (touchedAt == block.timestamp) return; // Already updated by previous transaction
         uint256 streamsLength = streams.length;
-        if (totalMAINTknShares != 0 && streamsLength != 0) {
-            totalAmountOfStakedMAINTkn += _getRewardsAmount(0, touchedAt);
+        if (totalXDCShares != 0 && streamsLength != 0) {
+            totalAmountOfStakedXDC += _getRewardsAmount(0, touchedAt);
             for (uint256 i = 1; i < streamsLength; i++) {
                 if (streams[i].status == StreamStatus.ACTIVE) {
                     streams[i].rps = _getLatestRewardsPerShare(i);
