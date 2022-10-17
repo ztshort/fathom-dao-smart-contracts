@@ -10,14 +10,14 @@ interface IXDCStakingHandler {
 
     function initializeStaking(
         address _vault,
-        address _XDC,
+        address _wXDC,
         Weight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
         uint256[] memory scheduleRewards,
         uint256 tau,
-        uint256 _voteShareCoef,
-        uint256 _voteLockWeight,
+        uint256 _lockShareCoef,
+        uint256 _lockPeriodCoef,
         uint256 _maxLocks) external;
 
     function proposeStream(

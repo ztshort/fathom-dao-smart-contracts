@@ -16,9 +16,6 @@ struct Schedule {
 }
 
 struct User {
-
-    uint128 veXDCBalance;
-    uint128 veXDCReleased;
     mapping(uint256 => uint256) pendings; // The amount of tokens pending release for user per stream
     mapping(uint256 => uint256) releaseTime; // The release moment per stream
     mapping(uint256 => mapping(uint256 => uint256)) rpsDuringLastClaimForLock;
@@ -34,7 +31,6 @@ struct Weight {
 
 struct LockedBalance {
     uint128 amountOfXDC;
-    uint128 amountOfveXDC;
     uint128 XDCShares;
     uint128 positionStreamShares;
     uint64 end;

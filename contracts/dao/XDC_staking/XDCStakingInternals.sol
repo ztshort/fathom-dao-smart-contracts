@@ -8,6 +8,8 @@ import "../governance/interfaces/IVeMainToken.sol";
 import "./XDCStakingRewardsInternals.sol";
 import "../staking/vault/interfaces/IVault.sol";
 import "../staking/library/BoringMath.sol";
+import "./tokens/IWXDC.sol";
+
 contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     // solhint-disable not-rely-on-time
 
@@ -18,8 +20,8 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         address _wXDC,
         Weight memory _weight,
         address _vault,
-        uint256 _voteShareCoef,
-        uint256 _voteLockWeight,
+        uint256 _lockShareCoef,
+        uint256 _lockPeriodCoef,
         uint256 _maxLockPositions
     ) internal {
         require(_wXDC != address(0x00), "zero main addrr");
@@ -30,8 +32,8 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         wXDC = _wXDC;
         weight = _weight;
         vault = _vault;
-        voteShareCoef = _voteShareCoef;
-        voteLockWeight = _voteLockWeight;
+        lockShareCoef = _lockShareCoef;
+        lockPeriodCoef = _lockPeriodCoef;
         maxLockPositions = _maxLockPositions;
     }
 
@@ -49,7 +51,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     ) internal {
         //@notice: newLock.end is always greater than block.timestamp
         uint256 lockPeriod = _newLocked.end - block.timestamp;
-        uint256 lockPeriodWeight = _calculateLockWeight(amount, lockPeriod);
+        uint256 lockPeriodWeight = _calculateLockPeriodWeight(amount, lockPeriod);
         if (amount > 0) {
             _newLocked.amountOfXDC += BoringMath.to128(amount);
         }
@@ -77,10 +79,8 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         address account
     ) internal {
 
-        User storage userAccount = users[account];
         LockedBalance storage updateLock = locks[account][lockId - 1];
         uint256 stakeValue = (totalAmountOfStakedXDC * updateLock.XDCShares) / totalXDCShares;
-        uint256 nLockedVeXDC = updateLock.amountOfveXDC;
         
         _unstake(updateLock, stakeValue, lockId, account);
     }
@@ -93,13 +93,13 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @notice the amount of stream shares you receive depends upon when in the timeline you have staked
      * @param account The account for which the lock position is staked
      * @param amount The amount of lock position to stake
-     * @param nVeXDC The amount of vote tokens released
+     * @param lockPeriodWeight The amount of vote tokens released
      * @param lockId The lock id of the lock position
      */ 
     function _stake(
         address account,
         uint256 amount,
-        uint256 nVeXDC,
+        uint256 lockPeriodWeight,
         uint256 lockId
     ) internal {
         User storage userAccount = users[account];
@@ -110,7 +110,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         totalAmountOfStakedXDC += amount;
         totalXDCShares += amountOfXDCShares;
 
-        uint256 weightedAmountOfSharesPerStream = _weightedShares(amountOfXDCShares, nVeXDC, block.timestamp);
+        uint256 weightedAmountOfSharesPerStream = _weightedShares(amountOfXDCShares, lockPeriodWeight, block.timestamp);
 
         totalStreamShares += weightedAmountOfSharesPerStream;
 
@@ -213,9 +213,15 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     function _withdraw(uint256 streamId) internal {
         User storage userAccount = users[msg.sender];
         uint256 pendingAmount = userAccount.pendings[streamId];
+
         userAccount.pendings[streamId] = 0;
         emit Released(streamId, msg.sender, pendingAmount);
-        IVault(vault).payRewards(msg.sender, streams[streamId].rewardToken, pendingAmount);
+        if(address(streams[streamId].rewardToken) == address(wXDC)){
+            IVault(vault).payRewards(address(this), wXDC, pendingAmount);
+            unwrapXDC(pendingAmount);
+        }else{
+            IVault(vault).payRewards(msg.sender, streams[streamId].rewardToken, pendingAmount);
+        }
     }
 
     function _withdrawPenalty(address accountTo) internal {
@@ -225,32 +231,55 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         IVault(vault).payRewards(accountTo, wXDC, pendingPenalty);
     }
 
+    function wrapXDC(
+        uint256 amount
+    )internal  {
+        uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
+        if (amount != 0){
+            IWXDC(wXDC).deposit{value: amount}();
+        }
+        require(IWXDC(wXDC).balanceOf(address(this)) - balanceBefore == amount,"xdc not deposited");
+    }
+
+    function unwrapXDC(
+        uint256 amount
+    )internal  {
+        uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
+        if (amount != 0){
+            IWXDC(wXDC).withdraw(amount);
+            payable(msg.sender).transfer(amount);
+        }
+
+        require(balanceBefore - IWXDC(wXDC).balanceOf(address(this))  == amount,"xdc not withdrawn");
+    }
+
 
     /**
      * @dev calculate the weighted stream shares at given timeshamp.
      * @param amountOfXDCShares The amount of Shares a user has
-     * @param nVeXDC The amount of Vote token for which shares will be calculated
+     * @param lockPeriodWeight The amount of Vote token for which shares will be calculated
      * @param timestamp the timestamp refering to the current or older timestamp
      */
     function _weightedShares(
         uint256 amountOfXDCShares,
-        uint256 nVeXDC,
+        uint256 lockPeriodWeight,
         uint256 timestamp
     ) internal view returns (uint256) {
         ///@notice Shares accomodate vote the amount of  XDCShares and vote Tokens to be released
         ///@notice This formula makes it so that both the time locked for Main token and the amount of token locked
         ///        is used to calculate rewards
-        uint256 shares = amountOfXDCShares + (voteShareCoef * nVeXDC) / 1000;
+        uint256 shares = amountOfXDCShares + (lockShareCoef * lockPeriodWeight) / 1000;
+        return shares;
 
-        uint256 slopeStart = streams[0].schedule.time[0] + ONE_MONTH;
-        uint256 slopeEnd = slopeStart + ONE_YEAR;
-        if (timestamp <= slopeStart) return shares * weight.maxWeightShares;
-        if (timestamp >= slopeEnd) return shares * weight.minWeightShares;
-        return
-            shares *
-            weight.maxWeightShares +
-            (shares * (weight.maxWeightShares - weight.minWeightShares) * (slopeEnd - timestamp)) /
-            (slopeEnd - slopeStart);
+        // uint256 slopeStart = streams[0].schedule.time[0] + ONE_MONTH;
+        // uint256 slopeEnd = slopeStart + ONE_YEAR;
+        // if (timestamp <= slopeStart) return shares * weight.maxWeightShares;
+        // if (timestamp >= slopeEnd) return shares * weight.minWeightShares;
+        // return
+        //     shares *
+        //     weight.maxWeightShares +
+        //     (shares * (weight.maxWeightShares - weight.minWeightShares) * (slopeEnd - timestamp)) /
+        //     (slopeEnd - slopeStart);
     }
 
     /**
@@ -301,9 +330,12 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @dev calculate the governance tokens to release
      * @notice
      */
-    function _calculateLockWeight(uint256 amount, uint256 lockingPeriod) internal view returns (uint256 nVeXDC) {
+    function _calculateLockPeriodWeight(uint256 amount, uint256 lockingPeriod) internal view
+             returns (uint256 lockPeriodWeight) {
         //voteWeight = 365 * 24 * 60 * 60;
-        nVeXDC = (amount * lockingPeriod * POINT_MULTIPLIER) / voteLockWeight / POINT_MULTIPLIER;
-        return nVeXDC;
+        lockPeriodWeight = (amount * lockingPeriod * POINT_MULTIPLIER) / lockPeriodCoef / POINT_MULTIPLIER;
+        return lockPeriodWeight;
     }
+
+    
 }

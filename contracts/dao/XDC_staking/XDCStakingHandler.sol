@@ -12,7 +12,7 @@ import "../staking/utils/AdminPausable.sol";
 import "./tokens/IWXDC.sol";
 
 // solhint-disable not-rely-on-time
-contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
+contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
                             AdminPausable {
 
     bytes32 public constant STREAM_MANAGER_ROLE =
@@ -41,8 +41,8 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         uint256[] memory scheduleTimes,
         uint256[] memory scheduleRewards,
         uint256 tau,
-        uint256 _voteShareCoef,
-        uint256 _voteLockWeight,
+        uint256 _lockShareCoef,
+        uint256 _lockPeriodCoef,
         uint256 _maxLocks
     ) external override {
         require(!stakingInitialised, "Already intiailised");
@@ -55,7 +55,7 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
             scheduleRewards,
             tau
         );
-        _initializeStaking(_wXDC, _weight, _vault,_voteShareCoef, _voteLockWeight, _maxLocks);
+        _initializeStaking(_wXDC, _weight, _vault,_lockShareCoef, _lockPeriodCoef, _maxLocks);
         require(IVault(vault).isSupportedToken(_wXDC), "Unsupported token");
         pausableInit(0);
         _grantRole(STREAM_MANAGER_ROLE, msg.sender);
@@ -197,7 +197,6 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         _before();
         LockedBalance memory _newLock = LockedBalance({
             amountOfXDC: 0,
-            amountOfveXDC: 0,
             XDCShares: 0,
             positionStreamShares: 0,
             end: BoringMath.to64(unlockTime),
@@ -205,6 +204,7 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         });
         _lock(msg.sender, _newLock, xdcAmount);
         wrapXDC(xdcAmount);
+        IERC20(wXDC).transferFrom(msg.sender, address(vault), amount);
     }
 
     /**
@@ -286,27 +286,7 @@ contract XDCStakingHandlers is XDCStakingStorage, IXDCStakingHandler,  XDCStakin
         }
     }
 
-    function wrapXDC(
-        uint256 amount
-    )internal  {
-        uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
-        if (amount != 0){
-            IWXDC(wXDC).deposit{value: amount}();
-        }
-        require(IWXDC(wXDC).balanceOf(address(this)) - balanceBefore == amount,"xdc not deposited");
-    }
-
-    function unwrapXDC(
-        uint256 amount
-    )internal  {
-        uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
-        if (amount != 0){
-            IWXDC(wXDC).withdraw(amount);
-            payable(msg.sender).transfer(amount);
-        }
-
-        require(balanceBefore - IWXDC(wXDC).balanceOf(address(this))  == amount,"xdc not withdrawn");
-    }
+    
     function _isItUnlockable(uint256 lockId) internal view  {
         require(lockId != 0, "lockId 0");
         require(lockId <= locks[msg.sender].length, "invalid lockid");

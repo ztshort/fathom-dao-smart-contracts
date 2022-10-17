@@ -34,17 +34,17 @@ contract XDCStakingStorage is IXDCStakingStorage {
     //Govenance Controlled. Add setter
     uint64 public earlyWithdrawPenaltyWeight;
 
-    /// _voteShareCoef the weight of vote tokens during shares distribution.
+    /// _lockShareCoef the weight of vote tokens during shares distribution.
     /// Should be passed in proportion of 1000. ie, if you want weight of 2, have to pass 2000
-    uint256 internal voteShareCoef;
-    ///_voteLockWeight the weight that determines the amount of vote tokens to release
-    uint256 internal voteLockWeight;
+    uint256 internal lockShareCoef;
+    ///_lockPeriodCoef the weight that determines the amount of vote tokens to release
+    uint256 internal lockPeriodCoef;
    
     address public wXDC;
 
     address public vault;
 
-    mapping(address => User) public users;
+    mapping(address => User) internal users;
     Stream[] internal streams;
     ///Mapping (user => LockedBalance) to keep locking information for each user
     mapping(address => LockedBalance[]) internal locks;

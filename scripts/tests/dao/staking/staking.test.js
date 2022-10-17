@@ -193,10 +193,10 @@ describe("Staking Test", () => {
         const startTime =  await _getTimeStamp() + 3 * 24 * 24 * 60;
 
         const scheduleRewards = [
-            web3.utils.toWei('2000', 'ether'),
-            web3.utils.toWei('1000', 'ether'),
-            web3.utils.toWei('500', 'ether'),
-            web3.utils.toWei('250', 'ether'),
+            web3.utils.toWei('200000', 'ether'),
+            web3.utils.toWei('100000', 'ether'),
+            web3.utils.toWei('50000', 'ether'),
+            web3.utils.toWei('25000', 'ether'),
             web3.utils.toWei("0", 'ether')
         ]
         const scheduleTimes = [
