@@ -204,7 +204,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
         });
         _lock(msg.sender, _newLock, xdcAmount);
         wrapXDC(xdcAmount);
-        IERC20(wXDC).transferFrom(msg.sender, address(vault), amount);
+        IERC20(wXDC).transferFrom(msg.sender, address(vault), xdcAmount);
     }
 
     /**
