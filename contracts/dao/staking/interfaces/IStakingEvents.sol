@@ -17,7 +17,7 @@ interface IStakingEvents {
     event StreamOwnerRewardReleased(
         uint256 indexed streamId,
         address indexed streamOwner,
-        uint256 mainTknStreamOwnerReward
+        uint256 FTHMStreamOwnerReward
     );
 
     event Released(uint256 indexed streamId, address indexed user, uint256 pendingAmount);

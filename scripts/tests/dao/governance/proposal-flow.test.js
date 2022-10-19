@@ -22,13 +22,13 @@ const PROPOSAL_CREATED_EVENT = "ProposalCreated(uint256,address,address[],uint25
 const SUBMIT_TRANSACTION_EVENT = "SubmitTransaction(uint256,address,address,uint256,bytes)";
 
 // Token variables
-const T_TOKEN_TO_MINT = "10000000000000000000000";
+const T_TOKEN_TO_MINT = "100000000000000000000000";
 
 
 
 // ================================================================================================
 // FROM SUBIK JIs STAKING TEST CODE:
-// const ERC20TokenMAINTkn = artifacts.require("./registry-layer/tokens-factory/tokens/ERC-20/ERC20Token.sol");
+// const ERC20TokenFTHM = artifacts.require("./registry-layer/tokens-factory/tokens/ERC-20/ERC20Token.sol");
 // const IERC20 = artifacts.require("./common/interfaces/erc20/IERC20.sol");
 
 const T_TO_STAKE = web3.utils.toWei('2000', 'ether');
@@ -133,7 +133,7 @@ describe('Proposal flow', () => {
             "VaultPackage"
         );
         
-        mainTknToken = await artifacts.initializeInterfaceAt("ERC20MainToken","ERC20MainToken");
+        FTHMToken = await artifacts.initializeInterfaceAt("ERC20MainToken","ERC20MainToken");
 
         lockingPeriod =  365 * 24 * 60 * 60;
         await veMainToken.addToWhitelist(stakingService.address, {from: SYSTEM_ACC});
@@ -141,9 +141,9 @@ describe('Proposal flow', () => {
         await veMainToken.grantRole(minter_role, stakingService.address, {from: SYSTEM_ACC});
 
         veMainTokenAddress = veMainToken.address;
-        mainTknTokenAddress = mainTknToken.address;
+        FTHMTokenAddress = FTHMToken.address;
 
-        await vaultService.addSupportedToken(mainTknTokenAddress);
+        await vaultService.addSupportedToken(FTHMTokenAddress);
 
         lockingVoteWeight = 365 * 24 * 60 * 60;
         maxNumberOfLocks = 10;
@@ -169,7 +169,7 @@ describe('Proposal flow', () => {
         
         await stakingService.initializeStaking(
             vault_test_address,
-            mainTknTokenAddress,
+            FTHMTokenAddress,
             veMainTokenAddress,
             weightObject,
             stream_owner,
@@ -263,9 +263,9 @@ describe('Proposal flow', () => {
 
         const _stakeMainGetVe = async (_account) => {
 
-            await mainTknToken.transfer(_account, T_TO_STAKE, {from: SYSTEM_ACC});
+            await FTHMToken.transfer(_account, T_TO_STAKE, {from: SYSTEM_ACC});
 
-            await mainTknToken.approve(stakingService.address, T_TO_STAKE, {from: _account});
+            await FTHMToken.approve(stakingService.address, T_TO_STAKE, {from: _account});
 
             await blockchain.increaseTime(20);
 
@@ -278,6 +278,8 @@ describe('Proposal flow', () => {
             // Here Staker 1 and staker 2 receive veMainTokens for staking MainTokens
             await _stakeMainGetVe(STAKER_1);
             await _stakeMainGetVe(STAKER_2);
+
+
 
             // Wait 1 block
             const currentNumber = await web3.eth.getBlockNumber();
@@ -619,6 +621,30 @@ describe('Proposal flow', () => {
             await multiSigWallet.executeTransaction(txIndex, {"from": accounts[0]});
             // Balance of account 5 should reflect the funds distributed from treasury in proposal 2
             expect((await mainToken.balanceOf(STAKER_1, {"from": STAKER_1})).toString()).to.equal(AMOUNT_OUT_TREASURY);
+        });
+
+        it('Mint MainToken token to everyone', async() => {
+
+            // This test is in preperation for front end UI tests which need accounts[0] to have a balance of more than 1000 ve tokens
+
+            const _stakeMainGetVe = async (_account) => {
+
+                await FTHMToken.transfer(_account, T_TO_STAKE, {from: SYSTEM_ACC});
+    
+                await FTHMToken.approve(stakingService.address, T_TO_STAKE, {from: _account});
+    
+                await blockchain.increaseTime(20);
+    
+                let unlockTime = await _getTimeStamp() + lockingPeriod;
+    
+                await stakingService.createLock(T_TO_STAKE, unlockTime, {from: _account, gas: 600000});
+            }
+
+            await _stakeMainGetVe(accounts[0]);
+            await _stakeMainGetVe(accounts[0]);
+
+            await _stakeMainGetVe(accounts[9]);
+            await _stakeMainGetVe(accounts[9]);
         });
 
         
