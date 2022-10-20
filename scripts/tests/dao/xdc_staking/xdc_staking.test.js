@@ -52,6 +52,11 @@ const _getTimeStamp = async () => {
     const timestamp = await blockchain.getLatestBlockTimestamp()
     return timestamp
 }
+
+const _getBalance = async(account) => {
+    const balance = await web3.eth.getBalance(account);
+    return balance
+}
 const _calculateNumberOfVMAINTkn = (sumToDeposit, lockingPeriod, lockingWeight) =>{
     const lockingPeriodBN = new web3.utils.BN(lockingPeriod);
     const lockingWeightBN = new web3.utils.BN(lockingWeight);
@@ -224,6 +229,42 @@ describe("Staking Test", () => {
             const wxdcTokenBalanceAfter = await WXDCToken.balanceOf(stakingService.address)
             const shouldBeBalance = _calculateAddition(wxdcBalanceBefore.toString(), wxdcTokenBalanceAfter.toString())
             assert.equal(shouldBeBalance.toString(), wxdcTokenBalanceAfter.toString())
+        })
+
+        
+
+        it('Should claim and withdraw', async() => {
+            const lockId = 1;
+            await blockchain.increaseTime(20);
+            let result = await stakingService.claimAllStreamRewardsForLock(lockId,{from: staker_1});
+            await blockchain.increaseTime(20);
+            result = await stakingService.withdrawAll({from: staker_1});
+            etherBalance =  await _getBalance(staker_1)
+            console.log(_convertToEtherBalance(etherBalance.toString()))
+        })
+
+        it('Should have zero balance of ether for the contract', async() => {
+            etherBalance =  await _getBalance(stakingService.address)
+            console.log(_convertToEtherBalance(etherBalance.toString()))
+        })
+
+        it('Should Unlock a Lock position', async() => {
+            const lockId = 1
+            const streamId = 0
+            await blockchain.increaseTime(20);
+            let lockingPeriod = 24 * 60 * 60;
+            await blockchain.increaseTime(lockingPeriod);
+            let result = await stakingService.unlock(lockId, {from: staker_1});
+            await blockchain.increaseTime(20);
+            result = await stakingService.withdraw(streamId,{from:staker_1});
+            etherBalance =  await _getBalance(staker_1)
+            console.log(_convertToEtherBalance(etherBalance.toString()))
+
+        })
+
+        it('Should have zero balance of ether for the contract', async() => {
+            etherBalance =  await _getBalance(stakingService.address)
+            console.log(_convertToEtherBalance(etherBalance.toString()))
         })
 
     })

@@ -12,6 +12,7 @@ import "../staking/utils/AdminPausable.sol";
 import "./tokens/IWXDC.sol";
 
 // solhint-disable not-rely-on-time
+//TODO Auto Compounding: Do it or not?
 contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
                             AdminPausable {
 
@@ -197,14 +198,14 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
         _before();
         LockedBalance memory _newLock = LockedBalance({
             amountOfXDC: 0,
-            XDCShares: 0,
             positionStreamShares: 0,
             end: BoringMath.to64(unlockTime),
             owner: msg.sender
         });
         _lock(msg.sender, _newLock, xdcAmount);
+        
         wrapXDC(xdcAmount);
-        IERC20(wXDC).transferFrom(msg.sender, address(vault), xdcAmount);
+        IERC20(wXDC).transferFrom(address(this), address(vault), xdcAmount);
     }
 
     /**
@@ -229,8 +230,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
         _isItUnlockable(lockId);
         require(lock.end > block.timestamp, "lock opened");
         _before();
-        _earlyUnlock(lockId, msg.sender);
-        
+        _earlyUnlock(lockId, msg.sender);   
     }
     /**
      * @dev This function claims rewards of a stream for a lock position and adds to pending of user.

@@ -67,6 +67,7 @@ module.exports = {
   migrateAndConfigureForTests: [
     ['compile'],
     ['execute', '--path', 'scripts/migrations/governance'],
+    ['execute', '--path', 'scripts/migrations/staking_xdc'],
     // ['execute', '--path', 'scripts/migrations/governance', '--network', 'ropsten'],
   ],
 }

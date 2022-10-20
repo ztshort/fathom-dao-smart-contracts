@@ -4,11 +4,9 @@
 pragma solidity ^0.8.13;
 
 interface IXDCStakingStorage {
-    function totalXDCShares() external view returns (uint256);
 
     function totalStreamShares() external view returns (uint256);
 
-    function totalAmountOfveXDC() external view returns (uint256);
 
     function totalAmountOfStakedXDC() external view returns (uint256);
 

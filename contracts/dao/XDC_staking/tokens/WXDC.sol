@@ -40,13 +40,11 @@ contract WXDC is IWXDC{
         emit Deposit(msg.sender, msg.value);
     }
     function withdraw(uint wad) override public {
-        require(balanceOf[msg.sender] >= wad, "");
+        require(balanceOf[msg.sender] >= wad, "insufficient balance of sender");
         balanceOf[msg.sender] -= wad;
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);
     }
-
-    
 
     function approve(address guy, uint wad) public override returns (bool) {
         allowance[msg.sender][guy] = wad;

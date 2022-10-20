@@ -31,7 +31,6 @@ struct Weight {
 
 struct LockedBalance {
     uint128 amountOfXDC;
-    uint128 XDCShares;
     uint128 positionStreamShares;
     uint64 end;
     address owner;
