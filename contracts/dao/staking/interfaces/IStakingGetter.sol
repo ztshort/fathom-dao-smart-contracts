@@ -15,6 +15,8 @@ interface IStakingGetter {
         view
         returns (uint256);
 
+    function getStreamLength() external view returns (uint256);
+
     /// @param streamId the stream index
     function getStream(uint256 streamId)
         external

@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.13;
 
-import "../XDCStakingStructs.sol";
 import "./IXDCStakingGetter.sol";
 import "./IXDCStakingHandler.sol";
 import "./IXDCStakingStorage.sol";

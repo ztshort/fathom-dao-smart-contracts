@@ -8,7 +8,7 @@ import "../XDCStakingStructs.sol";
 interface IXDCStakingGetter {
     function getLatestRewardsPerShare(uint256 streamId) external view returns (uint256);
 
-    function getLockInfo(address account, uint256 lockId) external view returns (LockedBalance memory);
+    function getLockInfo(address account, uint256 lockId) external view returns (XDCLockedBalance memory);
 
     function getUsersPendingRewards(address account, uint256 streamId) external view returns (uint256);
 
@@ -29,10 +29,10 @@ interface IXDCStakingGetter {
             uint256 maxDepositAmount,
             uint256 rps,
             uint256 tau,
-            StreamStatus status
+            XDCStreamStatus status
         );
 
-    function getAllLocks(address account)  external view  returns (LockedBalance[] memory);
+    function getAllLocks(address account)  external view  returns (XDCLockedBalance[] memory);
     function getStreamClaimableAmountPerLock(uint256 streamId, address account, uint256 lockId)
         external
         view

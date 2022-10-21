@@ -42,13 +42,13 @@ contract XDCStakingStorage is IXDCStakingStorage {
 
     address public vault;
 
-    mapping(address => User) internal users;
-    Stream[] internal streams;
+    mapping(address => XDCUser) internal users;
+    XDCStream[] internal streams;
     ///Mapping (user => LockedBalance) to keep locking information for each user
-    mapping(address => LockedBalance[]) internal locks;
+    mapping(address => XDCLockedBalance[]) internal locks;
 
     ///Weighting coefficient for shares and penalties
-    Weight internal weight;
+    XDCWeight internal weight;
 
     uint256 public maxLockPositions;
     address public govnContract;

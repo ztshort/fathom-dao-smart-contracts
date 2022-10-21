@@ -203,6 +203,10 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
         emit StreamRemoved(streamId, stream.owner, stream.rewardToken);
     }
 
+    //user increasing balance. User will get lock positions
+    //position - 500 -> 1 min, 500 -> 1year
+    //My Plan -> create lock position for each cdp based upon proxy wallet. -> 50 lock postion -> 0s of locking period.
+
     /**
      * @dev Creates a new lock position with lock period of unlock time
      * @param amount the amount for a lock position
@@ -226,6 +230,7 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
         _lock(msg.sender, _newLock, amount);
         IERC20(fthmToken).transferFrom(msg.sender, address(vault), amount);
     }
+    
 
     /**
      * @dev This function unlocks the whole position of the lock id.

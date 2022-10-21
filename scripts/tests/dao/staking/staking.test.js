@@ -214,8 +214,6 @@ describe("Staking Test", () => {
             vault_test_address,
             FTHMTokenAddress,
             veMainTokenAddress,
-            
-            
             weightObject,
             stream_owner,
             scheduleTimes,

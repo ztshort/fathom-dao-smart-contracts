@@ -31,9 +31,9 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
         uint256 streamId,
         uint256 lockId
     ) internal {
-        LockedBalance storage lock = locks[account][lockId - 1];
-        require(streams[streamId].status == StreamStatus.ACTIVE, "inactive or proposed");
-        User storage userAccount = users[account];
+        XDCLockedBalance storage lock = locks[account][lockId - 1];
+        require(streams[streamId].status == XDCStreamStatus.ACTIVE, "inactive or proposed");
+        XDCUser storage userAccount = users[account];
         uint256 reward = ((streams[streamId].rps - userAccount.rpsDuringLastClaimForLock[lockId][streamId]) *
             lock.positionStreamShares) / RPS_MULTIPLIER;
 
@@ -53,14 +53,14 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
     function _moveAllStreamRewardsToPending(address account, uint256 lockId) internal {
         uint256 streamsLength = streams.length;
         for (uint256 i = 0; i < streamsLength; i++) {
-            if (streams[i].status == StreamStatus.ACTIVE) _moveRewardsToPending(account, i, lockId);
+            if (streams[i].status == XDCStreamStatus.ACTIVE) _moveRewardsToPending(account, i, lockId);
         }
     }
 
     function _moveAllLockPositionRewardsToPending(address account, uint256 streamId) internal {
         require(streamId != 0, "auto-compound");
-        require(streams[streamId].status == StreamStatus.ACTIVE, "inactive or proposed");
-        LockedBalance[] memory locksOfAccount = locks[account];
+        require(streams[streamId].status == XDCStreamStatus.ACTIVE, "inactive or proposed");
+        XDCLockedBalance[] memory locksOfAccount = locks[account];
         uint256 locksLength = locksOfAccount.length;
         require(locksLength > 0, "no lock position");
         for (uint256 i = 1; i <= locksLength; i++){
@@ -78,7 +78,7 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
         uint256 streamsLength = streams.length;
         if (totalAmountOfStakedXDC != 0 && streamsLength != 0) {
             for (uint256 i = 0; i < streamsLength; i++) {
-                if (streams[i].status == StreamStatus.ACTIVE) {
+                if (streams[i].status == XDCStreamStatus.ACTIVE) {
                     streams[i].rps = _getLatestRewardsPerShare(i);
                 }
             }
@@ -167,7 +167,7 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
         uint256 start,
         uint256 end
     ) internal view returns (uint256) {
-        Schedule storage schedule = streams[streamId].schedule;
+        XDCSchedule storage schedule = streams[streamId].schedule;
         uint256 startIndex;
         uint256 endIndex;
         (startIndex, endIndex) = _startEndScheduleIndex(streamId, start, end);
@@ -211,7 +211,7 @@ contract XDCStakingRewardsInternals is XDCStakingStorage, IXDCStakingEvents {
         uint256 start,
         uint256 end
     ) internal view returns (uint256 startIndex, uint256 endIndex) {
-        Schedule storage schedule = streams[streamId].schedule;
+        XDCSchedule storage schedule = streams[streamId].schedule;
         uint256 scheduleTimeLength = schedule.time.length;
         require(scheduleTimeLength > 0, "bad schedules");
         require(end > start, "bad Reward Query Period");

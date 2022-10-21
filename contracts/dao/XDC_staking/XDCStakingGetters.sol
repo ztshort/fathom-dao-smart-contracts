@@ -12,7 +12,7 @@ contract XDCStakingInitPackageGetter is XDCStakingStorage, IXDCStakingGetter, XD
         return _getLatestRewardsPerShare(streamId);
     }
 
-    function getLockInfo(address account, uint256 lockId) external view override returns (LockedBalance memory) {
+    function getLockInfo(address account, uint256 lockId) external view override returns (XDCLockedBalance memory) {
         require(lockId <= locks[account].length, "out of index");
         return locks[account][lockId - 1];
     }
@@ -21,7 +21,7 @@ contract XDCStakingInitPackageGetter is XDCStakingStorage, IXDCStakingGetter, XD
         return users[account].pendings[streamId];
     }
 
-    function getAllLocks(address account)  external view override returns (LockedBalance[] memory) {
+    function getAllLocks(address account)  external view override returns (XDCLockedBalance[] memory) {
         return locks[account];
     }
 
@@ -33,8 +33,8 @@ contract XDCStakingInitPackageGetter is XDCStakingStorage, IXDCStakingGetter, XD
     {
         require(lockId <= locks[account].length, "out of index");
         uint256 latestRps = _getLatestRewardsPerShare(streamId);
-        User storage userAccount = users[account];
-        LockedBalance storage lock = locks[account][lockId-1];
+        XDCUser storage userAccount = users[account];
+        XDCLockedBalance storage lock = locks[account][lockId-1];
         uint256 userRpsPerLock = userAccount.rpsDuringLastClaimForLock[lockId][streamId];
         uint256 userSharesOfLock = lock.positionStreamShares;
         return ((latestRps - userRpsPerLock) * userSharesOfLock)/RPS_MULTIPLIER;
@@ -73,10 +73,10 @@ contract XDCStakingInitPackageGetter is XDCStakingStorage, IXDCStakingGetter, XD
             uint256 maxDepositAmount,
             uint256 rps,
             uint256 tau,
-            StreamStatus status
+            XDCStreamStatus status
         )
     {
-        Stream storage stream = streams[streamId];
+        XDCStream storage stream = streams[streamId];
         return (
             stream.owner,
             stream.rewardToken,

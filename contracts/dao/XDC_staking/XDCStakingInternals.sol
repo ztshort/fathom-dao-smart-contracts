@@ -20,7 +20,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      */
     function _initializeStaking(
         address _wXDC,
-        Weight memory _weight,
+        XDCWeight memory _weight,
         address _vault,
         uint256 _lockShareCoef,
         uint256 _lockPeriodCoef,
@@ -43,12 +43,12 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @dev Creates a new lock position for an account and stakes the position for rewards
      * @notice lockId is index + 1 of array of Locked Balance
      * @param account The address of the lock creator
-     * @param _newLocked The LockedBalance with zero balances updated through this function
+     * @param _newLocked The XDCLockedBalance with zero balances updated through this function
      * @param amount The amount to lock and stake
      */
     function _lock(
         address account,
-        LockedBalance memory _newLocked,
+        XDCLockedBalance memory _newLocked,
         uint256 amount
     ) internal {
         //@notice: newLock.end is always greater than block.timestamp
@@ -81,7 +81,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         address account
     ) internal {
 
-        LockedBalance storage updateLock = locks[account][lockId - 1];
+        XDCLockedBalance storage updateLock = locks[account][lockId - 1];
         uint256 stakeValue = updateLock.amountOfXDC;
         
         _unstake(updateLock, stakeValue, lockId, account);
@@ -104,8 +104,8 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         uint256 lockPeriodWeight,
         uint256 lockId
     ) internal {
-        User storage userAccount = users[account];
-        LockedBalance storage lock = locks[account][lockId - 1];
+        XDCUser storage userAccount = users[account];
+        XDCLockedBalance storage lock = locks[account][lockId - 1];
 
 
         totalAmountOfStakedXDC += amount;
@@ -136,12 +136,12 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @param account The account whose lock position is to be unstaked
      */
     function _unstake(
-        LockedBalance storage updateLock,
+        XDCLockedBalance storage updateLock,
         uint256 stakeValue,
         uint256 lockId,
         address account
     ) internal {
-        User storage userAccount = users[account];
+        XDCUser storage userAccount = users[account];
 
         totalAmountOfStakedXDC -= stakeValue;
         totalStreamShares -=  updateLock.positionStreamShares;
@@ -166,7 +166,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         uint256 lockId,
         address account
     ) internal {
-        LockedBalance storage lock = locks[account][lockId - 1];
+        XDCLockedBalance storage lock = locks[account][lockId - 1];
         uint256 lockEnd = lock.end;
         uint256 amount = lock.amountOfXDC;
         _unlock(lockId, account);
@@ -175,7 +175,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
 
         uint256 penalty = (weighingCoef * amount) / 100000;
 
-        User storage userAccount = users[account];
+        XDCUser storage userAccount = users[account];
 
         require(userAccount.pendings[0] >= penalty, "penalty high");
         userAccount.pendings[0] -= penalty;
@@ -185,14 +185,14 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
 
 
     function _removeLockPosition(
-        User storage userAccount,
+        XDCUser storage userAccount,
         address account,
         uint256 lockId
     ) internal {
         uint256 streamsLength = streams.length;
         uint256 lastLockId = locks[account].length;
         if (lastLockId != lockId && lastLockId > 1) {
-            LockedBalance storage lastIndexLockedBalance = locks[account][lastLockId - 1];
+            XDCLockedBalance storage lastIndexLockedBalance = locks[account][lastLockId - 1];
             locks[account][lockId - 1] = lastIndexLockedBalance;
             for (uint256 i = 1; i < streamsLength; i++) {
                 userAccount.rpsDuringLastClaimForLock[lockId][i] = userAccount.rpsDuringLastClaimForLock[lastLockId][i];
@@ -209,7 +209,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
      * @param streamId the stream index
      */
     function _withdraw(uint256 streamId) internal {
-        User storage userAccount = users[msg.sender];
+        XDCUser storage userAccount = users[msg.sender];
         uint256 pendingAmount = userAccount.pendings[streamId];
 
         userAccount.pendings[streamId] = 0;

@@ -4,24 +4,24 @@
 
 pragma solidity ^0.8.13;
 
-enum StreamStatus {
+enum XDCStreamStatus {
     INACTIVE,
     PROPOSED,
     ACTIVE
 }
 
-struct Schedule {
+struct XDCSchedule {
     uint256[] time;
     uint256[] reward;
 }
 
-struct User {
+struct XDCUser {
     mapping(uint256 => uint256) pendings; // The amount of tokens pending release for user per stream
     mapping(uint256 => uint256) releaseTime; // The release moment per stream
     mapping(uint256 => mapping(uint256 => uint256)) rpsDuringLastClaimForLock;
 }
 
-struct Weight {
+struct XDCWeight {
     uint32 maxWeightShares;
     uint32 minWeightShares;
     uint32 maxWeightPenalty;
@@ -29,13 +29,13 @@ struct Weight {
     uint32 penaltyWeightMultiplier;
 }
 
-struct LockedBalance {
+struct XDCLockedBalance {
     uint128 amountOfXDC;
     uint128 positionStreamShares;
     uint64 end;
     address owner;
 }
-struct Stream {
+struct XDCStream {
     address owner; // stream owned by the ERC-20 reward token owner
     address manager; // stream manager handled by XDC stream manager role
     address rewardToken;
@@ -45,6 +45,6 @@ struct Stream {
     uint256 minDepositAmount;
     uint256 tau; // pending time prior reward release
     uint256 rps; // Reward per share for a stream j>0
-    Schedule schedule;
-    StreamStatus status;
+    XDCSchedule schedule;
+    XDCStreamStatus status;
 }

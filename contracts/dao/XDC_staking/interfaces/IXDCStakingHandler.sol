@@ -11,7 +11,7 @@ interface IXDCStakingHandler {
     function initializeStaking(
         address _vault,
         address _wXDC,
-        Weight memory _weight,
+        XDCWeight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
         uint256[] memory scheduleRewards,

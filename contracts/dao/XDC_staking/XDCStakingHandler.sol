@@ -37,7 +37,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
     function initializeStaking(
         address _vault,
         address _wXDC,
-        Weight memory _weight,
+        XDCWeight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
         uint256[] memory scheduleRewards,
@@ -62,9 +62,9 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
         _grantRole(STREAM_MANAGER_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);
         uint256 streamId = 0;
-        Schedule memory schedule = Schedule(scheduleTimes, scheduleRewards);
+        XDCSchedule memory schedule = XDCSchedule(scheduleTimes, scheduleRewards);
         streams.push(
-            Stream({
+            XDCStream({
                 owner: streamOwner,
                 manager: streamOwner,
                 rewardToken: wXDC,
@@ -73,7 +73,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
                 rewardDepositAmount: 0,
                 rewardClaimedAmount: 0,
                 schedule: schedule,
-                status: StreamStatus.ACTIVE,
+                status: XDCStreamStatus.ACTIVE,
                 tau: tau,
                 rps: 0
             })
@@ -105,10 +105,10 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
         );
         // check wXDC token address is supportedToken in the treasury
         require(IVault(vault).isSupportedToken(rewardToken), "Unsupport Token");
-        Schedule memory schedule = Schedule(scheduleTimes, scheduleRewards);
+        XDCSchedule memory schedule = XDCSchedule(scheduleTimes, scheduleRewards);
         uint256 streamId = streams.length;
         streams.push(
-            Stream({
+            XDCStream({
                 owner: streamOwner,
                 manager: msg.sender,
                 rewardToken: rewardToken,
@@ -117,7 +117,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
                 rewardDepositAmount: 0,
                 rewardClaimedAmount: 0,
                 schedule: schedule,
-                status: StreamStatus.PROPOSED,
+                status: XDCStreamStatus.PROPOSED,
                 tau: tau,
                 rps: 0
             })
@@ -131,14 +131,14 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
      * @param streamId stream id
      */
     function createStream(uint256 streamId, uint256 rewardTokenAmount) external override pausable(1) {
-        Stream storage stream = streams[streamId];
-        require(stream.status == StreamStatus.PROPOSED, "Stream nt proposed");
+        XDCStream storage stream = streams[streamId];
+        require(stream.status == XDCStreamStatus.PROPOSED, "Stream nt proposed");
         require(stream.schedule.time[0] >= block.timestamp, "Stream proposal expire");
 
         require(rewardTokenAmount <= stream.maxDepositAmount, "Rewards high");
         require(rewardTokenAmount >= stream.minDepositAmount, "Rewards low");
 
-        stream.status = StreamStatus.ACTIVE;
+        stream.status = XDCStreamStatus.ACTIVE;
 
         stream.rewardDepositAmount = rewardTokenAmount;
         if (rewardTokenAmount < stream.maxDepositAmount) {
@@ -153,10 +153,10 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
 
     //STREAM_MANAGER_ROLE
     function cancelStreamProposal(uint256 streamId) external override onlyRole(STREAM_MANAGER_ROLE){
-        Stream storage stream = streams[streamId];
-        require(stream.status == StreamStatus.PROPOSED, "stream nt proposed");
+        XDCStream storage stream = streams[streamId];
+        require(stream.status == XDCStreamStatus.PROPOSED, "stream nt proposed");
         // cancel pa proposal
-        stream.status = StreamStatus.INACTIVE;
+        stream.status = XDCStreamStatus.INACTIVE;
 
         emit StreamProposalCancelled(streamId, stream.owner, stream.rewardToken);
     }
@@ -166,9 +166,9 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
     /// @param streamId stream index
     function removeStream(uint256 streamId, address streamFundReceiver) external override onlyRole(STREAM_MANAGER_ROLE){
         require(streamId != 0, "Stream 0");
-        Stream storage stream = streams[streamId];
-        require(stream.status == StreamStatus.ACTIVE, "No Stream");
-        stream.status = StreamStatus.INACTIVE;
+        XDCStream storage stream = streams[streamId];
+        require(stream.status == XDCStreamStatus.ACTIVE, "No Stream");
+        stream.status = XDCStreamStatus.INACTIVE;
         uint256 releaseRewardAmount = stream.rewardDepositAmount - stream.rewardClaimedAmount;
         uint256 rewardTreasury = _getVaultBalance(stream.rewardToken);
 
@@ -196,7 +196,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
         require(unlockTime <= block.timestamp + MAX_LOCK, "max 1 year");
 
         _before();
-        LockedBalance memory _newLock = LockedBalance({
+        XDCLockedBalance memory _newLock = XDCLockedBalance({
             amountOfXDC: 0,
             positionStreamShares: 0,
             end: BoringMath.to64(unlockTime),
@@ -214,7 +214,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
      * @param lockId The lockId to unlock completely
      */
     function unlock(uint256 lockId) external override nonReentrant pausable(1) {
-        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        XDCLockedBalance storage lock = locks[msg.sender][lockId - 1];
         _isItUnlockable(lockId);
         require(lock.end <= block.timestamp, "lock not open");
         _before();
@@ -226,7 +226,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
      * @param lockId The lock id to unlock early
      */
     function earlyUnlock(uint256 lockId) external override nonReentrant pausable(1) {
-        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        XDCLockedBalance storage lock = locks[msg.sender][lockId - 1];
         _isItUnlockable(lockId);
         require(lock.end > block.timestamp, "lock opened");
         _before();
@@ -261,7 +261,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
 
 
     /**
-     * @dev withdraw amount in the pending pool. User should wait for
+     * @dev withdraw amount in the pending pool. XDCUser should wait for
      * pending time (tau constant) in order to be able to withdraw.
      * @param streamId stream index
      */
@@ -276,7 +276,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
      * so the frontend will allow individual stream withdrawals and disable withdrawAll.
      */
     function withdrawAll() external override pausable(1) {
-        User storage userAccount = users[msg.sender];
+        XDCUser storage userAccount = users[msg.sender];
         uint256 streamsLength = streams.length;
         for (uint256 i = 0; i < streamsLength; i++) {
             if (userAccount.pendings[i] != 0 && block.timestamp > userAccount.releaseTime[i]) {
@@ -290,7 +290,7 @@ contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStaking
     function _isItUnlockable(uint256 lockId) internal view  {
         require(lockId != 0, "lockId 0");
         require(lockId <= locks[msg.sender].length, "invalid lockid");
-        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        XDCLockedBalance storage lock = locks[msg.sender][lockId - 1];
         require(lock.amountOfXDC > 0, "no lock amount");
         require(lock.owner == msg.sender, "bad owner");
     }

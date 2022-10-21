@@ -21,6 +21,10 @@ contract StakingInitPackageGetter is StakingStorage, IStakingGetter, StakingInte
         return locks[account];
     }
 
+    function getStreamLength() external override view returns (uint256) {
+        return streams.length;
+    }
+
     function getStreamClaimableAmountPerLock(uint256 streamId, address account, uint256 lockId)
         external
         view
