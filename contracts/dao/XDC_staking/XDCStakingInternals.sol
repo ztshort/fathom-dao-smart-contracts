@@ -216,7 +216,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         emit Released(streamId, msg.sender, pendingAmount);
         if(address(streams[streamId].rewardToken) == address(wXDC)){
             IVault(vault).payRewards(address(this), wXDC, pendingAmount);
-            unwrapXDC(pendingAmount);
+            unwrapXDC(pendingAmount, msg.sender);
         }else{
             IVault(vault).payRewards(msg.sender, streams[streamId].rewardToken, pendingAmount);
         }
@@ -227,6 +227,7 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
         totalPenaltyBalance = 0;
         totalPenaltyReleased += pendingPenalty;
         IVault(vault).payRewards(accountTo, wXDC, pendingPenalty);
+        unwrapXDC(pendingPenalty,msg.sender);
     }
 
     function wrapXDC(
@@ -240,12 +241,13 @@ contract XDCStakingInternals is XDCStakingStorage, XDCStakingRewardsInternals {
     }
 
     function unwrapXDC(
-        uint256 amount
+        uint256 amount,
+        address accountTo
     )internal  {
         uint256 balanceBefore = IWXDC(wXDC).balanceOf(address(this));
         if (amount != 0){
             IWXDC(wXDC).withdraw(amount);
-            payable(msg.sender).transfer(amount);
+            payable(accountTo).transfer(amount);
         }
 
         require(balanceBefore - IWXDC(wXDC).balanceOf(address(this))  == amount,"xdc not withdrawn");

@@ -38,5 +38,7 @@ interface IXDCStakingGetter {
         view
         
         returns (uint256) ;
+
+    function getStreamLength() external view returns (uint256);
     
 }

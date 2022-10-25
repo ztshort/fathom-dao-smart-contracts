@@ -10,11 +10,12 @@ import "../staking/vault/interfaces/IVault.sol";
 import "../staking/utils/ReentrancyGuard.sol";
 import "../staking/utils/AdminPausable.sol";
 import "./tokens/IWXDC.sol";
+import "./XDCStakingGetters.sol";
 
 // solhint-disable not-rely-on-time
 //TODO Auto Compounding: Do it or not?
 contract XDCStakingHandler is XDCStakingStorage, IXDCStakingHandler,  XDCStakingInternals, ReentrancyGuard, 
-                            AdminPausable {
+                            AdminPausable,XDCStakingInitPackageGetter {
 
     bytes32 public constant STREAM_MANAGER_ROLE =
         keccak256("STREAM_MANAGER_ROLE");

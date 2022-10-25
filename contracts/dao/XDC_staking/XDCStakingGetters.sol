@@ -17,6 +17,10 @@ contract XDCStakingInitPackageGetter is XDCStakingStorage, IXDCStakingGetter, XD
         return locks[account][lockId - 1];
     }
 
+    function getStreamLength() external override view returns (uint256) {
+        return streams.length;
+    }
+
     function getUsersPendingRewards(address account, uint256 streamId) external view override returns (uint256) {
         return users[account].pendings[streamId];
     }
