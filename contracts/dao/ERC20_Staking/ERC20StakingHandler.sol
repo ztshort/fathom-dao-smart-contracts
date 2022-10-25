@@ -3,110 +3,88 @@
 // Copyright Fathom 2022
 
 pragma solidity ^0.8.13;
-import "../StakingStorage.sol";
-import "../interfaces/IStakingHandler.sol";
-import "./StakingInternals.sol";
-import "../vault/interfaces/IVault.sol";
-import "../utils/ReentrancyGuard.sol";
-import "../utils/AdminPausable.sol";
-import "../interfaces/IStakingSetter.sol";
-
+import "./ERC20StakingStorage.sol";
+import "./interfaces/IERC20StakingHandler.sol";
+import "./ERC20StakingInternals.sol";
+import "../staking/vault/interfaces/IVault.sol";
+import "../staking/utils/ReentrancyGuard.sol";
+import "../staking/utils/AdminPausable.sol";
+import "./ERC20StakingGetters.sol";
 
 // solhint-disable not-rely-on-time
-contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, StakingInternals, ReentrancyGuard, 
-                            AdminPausable {
+//TODO Auto Compounding: Do it or not?
+contract ERC20StakingHandler is ERC20StakingStorage, IERC20StakingHandler,  ERC20StakingInternals, ReentrancyGuard, 
+                            AdminPausable,ERC20StakingInitPackageGetter {
 
     bytes32 public constant STREAM_MANAGER_ROLE =
         keccak256("STREAM_MANAGER_ROLE");
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
-
     
     /**
-    * @dev initialize the contract and deploys the first stream of rewards(FTHM)
+    * @dev initialize the contract and deploys the first stream of rewards(ERC20)
     * @dev initializable only once due to stakingInitialised flag
     * @notice By calling this function, the deployer of this contract must
-    * make sure that the FTHM Rewards amount was deposited to the treasury contract
-    * before initializing of the default FTHM Stream
-    * @param _vault The Vault address to store FTHM and rewards tokens
-    * @param _fthmToken token contract address
+    * make sure that the ERC20 Rewards amount was deposited to the treasury contract
+    * before initializing of the default ERC20 Stream
+    * @param _vault The Vault address to store ERC20 and rewards tokens
+    * @param _wERC20 token contract address
     * @param _weight Weighting coefficient for shares and penalties
-    * @param streamOwner the owner and manager of the FTHM stream
+    * @param streamOwner the owner and manager of the ERC20 stream
     * @param scheduleTimes init schedules times
     * @param scheduleRewards init schedule rewards
     * @param tau release time constant per stream
-    * @param _voteShareCoef the weight of vote tokens during shares distribution.
-             Should be passed in proportion of 1000. ie, if you want weight of 2, have to pass 2000
-    * @param _voteLockWeight the weight that determines the amount of vote tokens to release
     */
     function initializeStaking(
         address _vault,
-        address _fthmToken,
-        address _veFTHM,
-        Weight memory _weight,
+        address _wERC20,
+        ERC20Weight memory _weight,
         address streamOwner,
         uint256[] memory scheduleTimes,
         uint256[] memory scheduleRewards,
         uint256 tau,
-        uint256 _voteShareCoef,
-        uint256 _voteLockWeight,
+        uint256 _lockShareCoef,
+        uint256 _lockPeriodCoef,
         uint256 _maxLocks
     ) external override {
         require(!stakingInitialised, "Already intiailised");
         _validateStreamParameters(
             streamOwner,
-            _fthmToken,
+            _wERC20,
             scheduleRewards[0],
             scheduleRewards[0],
             scheduleTimes,
             scheduleRewards,
             tau
         );
-        _initializeStaking(_fthmToken, _veFTHM, _weight, _vault, _voteShareCoef, _voteLockWeight, _maxLocks);
-        require(IVault(vault).isSupportedToken(_fthmToken), "Unsupported token");
+        _initializeStaking(_wERC20, _weight, _vault,_lockShareCoef, _lockPeriodCoef, _maxLocks);
+        require(IVault(vault).isSupportedToken(_wERC20), "Unsupported token");
         pausableInit(0);
         _grantRole(STREAM_MANAGER_ROLE, msg.sender);
         _grantRole(GOVERNANCE_ROLE, msg.sender);
         uint256 streamId = 0;
-        Schedule memory schedule = Schedule(scheduleTimes, scheduleRewards);
+        ERC20Schedule memory schedule = ERC20Schedule(scheduleTimes, scheduleRewards);
         streams.push(
-            Stream({
+            ERC20Stream({
                 owner: streamOwner,
                 manager: streamOwner,
-                rewardToken: fthmToken,
+                rewardToken: wERC20,
                 maxDepositAmount: 0,
                 minDepositAmount: 0,
                 rewardDepositAmount: 0,
                 rewardClaimedAmount: 0,
                 schedule: schedule,
-                status: StreamStatus.ACTIVE,
+                status: ERC20StreamStatus.ACTIVE,
                 tau: tau,
                 rps: 0
             })
         );
         earlyWithdrawalFlag = true;
         stakingInitialised = true;
-        emit StreamProposed(streamId, streamOwner, fthmToken, scheduleRewards[0]);
-        emit StreamCreated(streamId, streamOwner, fthmToken, scheduleRewards[0]);
+        emit StreamProposed(streamId, streamOwner, _wERC20, scheduleRewards[0]);
+        emit StreamCreated(streamId, streamOwner, _wERC20, scheduleRewards[0]);
     }
 
     
-    /**
-     * @dev An admin of the staking contract can whitelist (propose) a stream.
-     * Whitelisting of the stream provides the option for the stream
-     * owner (presumably the issuing party of a specific token) to
-     * deposit some ERC-20 tokens on the staking contract and potentially
-     * get in return some FTHM tokens immediately. 
-     * @notice Manager of Vault must call
-     * @param streamOwner only this account will be able to launch a stream
-     * @param rewardToken the address of the ERC-20 tokens to be deposited in the stream
-     * @param maxDepositAmount The upper amount of the tokens that should be deposited by stream owner
-     * @param scheduleTimes timestamp denoting the start of each scheduled interval.
-                            Last element is the end of the stream.
-     * @param scheduleRewards remaining rewards to be delivered at the beginning of each scheduled interval. 
-                               Last element is always zero.
-     * First value (in scheduleRewards) from array is supposed to be a total amount of rewards for stream.
-     * @param tau the tau is (pending release period) for this stream (e.g one day)
-    */
     function proposeStream(
         address streamOwner,
         address rewardToken,
@@ -125,12 +103,12 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
             scheduleRewards,
             tau
         );
-        // check FTHM token address is supportedToken in the treasury
+        // check wERC20 token address is supportedToken in the treasury
         require(IVault(vault).isSupportedToken(rewardToken), "Unsupport Token");
-        Schedule memory schedule = Schedule(scheduleTimes, scheduleRewards);
+        ERC20Schedule memory schedule = ERC20Schedule(scheduleTimes, scheduleRewards);
         uint256 streamId = streams.length;
         streams.push(
-            Stream({
+            ERC20Stream({
                 owner: streamOwner,
                 manager: msg.sender,
                 rewardToken: rewardToken,
@@ -139,7 +117,7 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
                 rewardDepositAmount: 0,
                 rewardClaimedAmount: 0,
                 schedule: schedule,
-                status: StreamStatus.PROPOSED,
+                status: ERC20StreamStatus.PROPOSED,
                 tau: tau,
                 rps: 0
             })
@@ -152,16 +130,15 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
      * stream owner must approve reward tokens to this contract.
      * @param streamId stream id
      */
-     //TODO: TransferFrom
     function createStream(uint256 streamId, uint256 rewardTokenAmount) external override pausable(1) {
-        Stream storage stream = streams[streamId];
-
-        require(stream.status == StreamStatus.PROPOSED, "Stream nt proposed");
+        ERC20Stream storage stream = streams[streamId];
+        require(stream.status == ERC20StreamStatus.PROPOSED, "Stream nt proposed");
         require(stream.schedule.time[0] >= block.timestamp, "Stream proposal expire");
-        
+
         require(rewardTokenAmount <= stream.maxDepositAmount, "Rewards high");
         require(rewardTokenAmount >= stream.minDepositAmount, "Rewards low");
-        stream.status = StreamStatus.ACTIVE;
+
+        stream.status = ERC20StreamStatus.ACTIVE;
 
         stream.rewardDepositAmount = rewardTokenAmount;
         if (rewardTokenAmount < stream.maxDepositAmount) {
@@ -176,10 +153,10 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
 
     //STREAM_MANAGER_ROLE
     function cancelStreamProposal(uint256 streamId) external override onlyRole(STREAM_MANAGER_ROLE){
-        Stream storage stream = streams[streamId];
-        require(stream.status == StreamStatus.PROPOSED, "stream nt proposed");
+        ERC20Stream storage stream = streams[streamId];
+        require(stream.status == ERC20StreamStatus.PROPOSED, "stream nt proposed");
         // cancel pa proposal
-        stream.status = StreamStatus.INACTIVE;
+        stream.status = ERC20StreamStatus.INACTIVE;
 
         emit StreamProposalCancelled(streamId, stream.owner, stream.rewardToken);
     }
@@ -189,11 +166,11 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
     /// @param streamId stream index
     function removeStream(uint256 streamId, address streamFundReceiver) external override onlyRole(STREAM_MANAGER_ROLE){
         require(streamId != 0, "Stream 0");
-        Stream storage stream = streams[streamId];
-        require(stream.status == StreamStatus.ACTIVE, "No Stream");
-        stream.status = StreamStatus.INACTIVE;
+        ERC20Stream storage stream = streams[streamId];
+        require(stream.status == ERC20StreamStatus.ACTIVE, "No Stream");
+        stream.status = ERC20StreamStatus.INACTIVE;
         uint256 releaseRewardAmount = stream.rewardDepositAmount - stream.rewardClaimedAmount;
-        uint256 rewardTreasury = IERC20(stream.rewardToken).balanceOf(vault);
+        uint256 rewardTreasury = _getVaultBalance(stream.rewardToken);
 
         IVault(vault).payRewards(
             streamFundReceiver,
@@ -203,35 +180,31 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
 
         emit StreamRemoved(streamId, stream.owner, stream.rewardToken);
     }
-
-    //user increasing balance. User will get lock positions
-    //position - 500 -> 1 min, 500 -> 1year
-    //My Plan -> create lock position for each cdp based upon proxy wallet. -> 50 lock postion -> 0s of locking period.
+     
 
     /**
      * @dev Creates a new lock position with lock period of unlock time
-     * @param amount the amount for a lock position
      * @param unlockTime the locking period
      */
-    function createLock(uint256 amount, uint256 unlockTime) external override nonReentrant pausable(1) {
+   
+    function createLock(uint256 amount, uint256 unlockTime) external  override nonReentrant pausable(1) {
         require(locks[msg.sender].length <= maxLockPositions, "max locks");
+        
         require(amount > 0, "amount 0");
         require(unlockTime > block.timestamp, "bad lock time");
         require(unlockTime <= block.timestamp + MAX_LOCK, "max 1 year");
 
         _before();
-        LockedBalance memory _newLock = LockedBalance({
-            amountOfFTHM: 0,
-            amountOfveFTHM: 0,
-            FTHMShares: 0,
+        ERC20LockedBalance memory _newLock = ERC20LockedBalance({
+            amountOfERC20: 0,
             positionStreamShares: 0,
             end: BoringMath.to64(unlockTime),
             owner: msg.sender
         });
         _lock(msg.sender, _newLock, amount);
-        IERC20(fthmToken).transferFrom(msg.sender, address(vault), amount);
+        
+        IERC20(wERC20).transferFrom(msg.sender, address(vault), amount);
     }
-    
 
     /**
      * @dev This function unlocks the whole position of the lock id.
@@ -239,7 +212,7 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
      * @param lockId The lockId to unlock completely
      */
     function unlock(uint256 lockId) external override nonReentrant pausable(1) {
-        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        ERC20LockedBalance storage lock = locks[msg.sender][lockId - 1];
         _isItUnlockable(lockId);
         require(lock.end <= block.timestamp, "lock not open");
         _before();
@@ -250,14 +223,13 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
      * @dev This funciton allows for earlier withdrawal but with penalty
      * @param lockId The lock id to unlock early
      */
-    function earlyUnlock(uint256 lockId) external override nonReentrant pausable(1){
-        LockedBalance storage lock = locks[msg.sender][lockId - 1];
+    function earlyUnlock(uint256 lockId) external override nonReentrant pausable(1) {
+        ERC20LockedBalance storage lock = locks[msg.sender][lockId - 1];
         _isItUnlockable(lockId);
         require(lock.end > block.timestamp, "lock opened");
         _before();
-        _earlyUnlock(lockId, msg.sender);
+        _earlyUnlock(lockId, msg.sender);   
     }
-
     /**
      * @dev This function claims rewards of a stream for a lock position and adds to pending of user.
      * @param streamId The id of the stream to claim rewards from
@@ -285,8 +257,9 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
         _moveAllLockPositionRewardsToPending(msg.sender, streamId);
     }
 
+
     /**
-     * @dev withdraw amount in the pending pool. User should wait for
+     * @dev withdraw amount in the pending pool. ERC20User should wait for
      * pending time (tau constant) in order to be able to withdraw.
      * @param streamId stream index
      */
@@ -301,57 +274,23 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
      * so the frontend will allow individual stream withdrawals and disable withdrawAll.
      */
     function withdrawAll() external override pausable(1) {
-        User storage userAccount = users[msg.sender];
+        ERC20User storage userAccount = users[msg.sender];
         uint256 streamsLength = streams.length;
         for (uint256 i = 0; i < streamsLength; i++) {
             if (userAccount.pendings[i] != 0 && block.timestamp > userAccount.releaseTime[i]) {
+                
                 _withdraw(i);
             }
         }
     }
 
-    function withdrawPenalty(address penaltyReceiver) external override pausable(1) onlyRole(GOVERNANCE_ROLE){
-        require(totalPenaltyBalance > 0, "no penalty");
-        _withdrawPenalty(penaltyReceiver);
-    }
-
-    function setGovernanceContract(
-        address _govnContract
-    ) external override onlyRole(GOVERNANCE_ROLE){
-        _grantRole(GOVERNANCE_ROLE, _govnContract);
-        govnContract = _govnContract;
-    }
-
-    function setMaxLockPositions(
-        uint8 _maxLockPositions
-    ) external override {
-        maxLockPositions = _maxLockPositions;
-    }
-
-    function setEarlyWithdrawalFlag(
-        bool _flag
-    ) external override onlyRole(GOVERNANCE_ROLE){
-        earlyWithdrawalFlag = _flag;
-    }
-
-    function setTreasuryAddress(
-        address _treasury 
-    ) external override onlyRole(GOVERNANCE_ROLE){
-        treasury = _treasury;
-    }
-
-    function setVOTETokenAddress(
-        address _voteToken 
-    ) external override onlyRole(GOVERNANCE_ROLE){
-        veFTHM = _voteToken;
-    }
-
+    
     function _isItUnlockable(uint256 lockId) internal view  {
         require(lockId != 0, "lockId 0");
         require(lockId <= locks[msg.sender].length, "invalid lockid");
-        LockedBalance storage lock = locks[msg.sender][lockId - 1];
-        require(lock.amountOfFTHM > 0, "no lock amount");
+        ERC20LockedBalance storage lock = locks[msg.sender][lockId - 1];
+        require(lock.amountOfERC20 > 0, "no lock amount");
         require(lock.owner == msg.sender, "bad owner");
     }
-    
+ 
 }

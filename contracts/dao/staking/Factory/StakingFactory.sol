@@ -9,25 +9,33 @@ import "../../governance/token/ERC20/IERC20.sol";
 import "../library/SafeERC20.sol";
 import "../../governance/interfaces/IVeMainToken.sol";
 import "../../governance/access/IAccessControl.sol";
+import "../../ERC20_Staking/interfaces/IERC20Staking.sol";
+
 
 
 contract StakingFactory {
     bytes32 internal constant FTHMSTAKING = keccak256("FTHM_STAKING");
     bytes32 internal constant XDCSTAKING = keccak256("XDC_STAKING");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    event StakingCreated(address indexed owner, address indexed addr, address template);
-    
-    
-    
+    struct StakingProperties{
+        uint256 tau;
+        uint256 lockShareCoef;
+        uint256 lockPeriodCoef;
+        uint256 maxLocks;
+    }
+
     struct Staking {
         bool exists;
         bytes32 templateId;
     }
+    event StakingCreated(address indexed owner, address indexed addr, address template);
+
 
     bool private initialised;
     address[] public stakingAddresses;
-    mapping(bytes32 => address) private FTHMStakingAddress;
-    mapping(bytes32 => address payable) private XDCStakingAddress;
+     //TODO: This needed???
+    mapping(bytes32 => address) private StakingTemplateAddress;
+
     mapping(address => address) private vaultAddress;
     mapping(address =>  Staking) private stakingInfo;
     address[] private stakings;
@@ -36,6 +44,7 @@ contract StakingFactory {
 
     }
 
+    ///@notice deployStaking only for staking ERC20 tokens that is created as streams
     function deployStaking(
         bytes32 templateId,
         address _template
@@ -64,7 +73,8 @@ contract StakingFactory {
         StakingPackage FTHMStaking = new StakingPackage();
         stakingInfo[address(FTHMStaking)] = Staking(true, FTHMSTAKING);
         stakings.push(address(FTHMStaking));
-        FTHMStakingAddress[FTHMSTAKING] = address(FTHMStaking);
+        //TODO: This needed???
+        StakingTemplateAddress[FTHMSTAKING] = address(FTHMStaking);
 
         require(vault != address(0x00),"vault address 0");
         
@@ -76,14 +86,17 @@ contract StakingFactory {
             address(this),
             scheduleRewards[0]
         );
+        uint256 remainingBalance = IERC20(fthmToken).balanceOf(address(this));
+        require(remainingBalance >= scheduleRewards[0],"insufficient reward tokena mount");
 
-        
         IVault(vault).addSupportedToken(fthmToken);
         IERC20(fthmToken).safeTransferFrom(
             address(this),
             vault,
             scheduleRewards[0]
         );
+
+
         //TODO  Initialize staking
         FTHMStaking.initializeStaking(
             vault,
@@ -102,7 +115,6 @@ contract StakingFactory {
     }
 
     function createStakingXDC(
-        bytes32 templateId,
         address vault,
         address wXDC,
         XDCWeight memory weight,
@@ -113,14 +125,18 @@ contract StakingFactory {
         uint256 lockShareCoef,
         uint256 lockPeriodCoef,
         uint256 maxLocks) internal {
-        address template = XDCStakingAddress[templateId];
-        require(template != address(0),"staking template: addr 0");
-        address staking = deployStaking(templateId, template);
+
+        XDCStakingHandler XDCStaking = new XDCStakingHandler();
+        stakingInfo[address(XDCStaking)] = Staking(true, FTHMSTAKING);
+        stakings.push(address(XDCStaking));
+        //TODO: This needed???
+        StakingTemplateAddress[FTHMSTAKING] = address(XDCStaking);
+
         //TODO: Transfer WXDC Token to vault
 
         //TODO: Add supported token WXDC Token
         // Initialize staking
-        IXDCStaking(staking).initializeStaking(
+        XDCStaking.initializeStaking(
             vault,
             wXDC,
             weight,
@@ -134,9 +150,63 @@ contract StakingFactory {
         );
     }
 
-    
+    function createERC20Staking(
+        bytes32 templateId,
+        address vault,
+        address wXDC,
+        ERC20Weight memory weight,
+        address streamOwner,
+        uint256[] memory scheduleTimes,
+        uint256[] memory scheduleRewards,
+        StakingProperties memory stakingProps
+    ) external {
+        address staking = StakingTemplateAddress[templateId];
+        require(staking != address(0x00),"empty staking address");
+        address stakingProxy = deployStaking(templateId,staking);
 
-    function createStreamFTHMStaking(
+        IERC20Staking stakingContract = IERC20Staking(stakingProxy);
+        stakingInfo[address(staking)] = Staking(true, FTHMSTAKING);
+        stakings.push(address(staking));
+        //TODO: This needed???
+        StakingTemplateAddress[templateId] = address(staking);
+
+        require(vault != address(0x00),"vault address 0");
+        
+        //TODO: Transfer FTHM Token to vault
+        IERC20(wXDC).safeTransferFrom(
+            msg.sender,
+            address(this),
+            scheduleRewards[0]
+        );
+        uint256 remainingBalance = IERC20(wXDC).balanceOf(address(this));
+        require(remainingBalance >= scheduleRewards[0],"insufficient reward tokena mount");
+
+        IVault(vault).addSupportedToken(wXDC);
+        IERC20(wXDC).safeTransferFrom(
+            address(this),
+            vault,
+            scheduleRewards[0]
+        );
+
+
+        //TODO  Initialize staking
+        stakingContract.initializeStaking(
+            vault,
+            wXDC,
+            weight,
+            streamOwner,
+            scheduleTimes,
+            scheduleRewards,
+            stakingProps.tau,
+            stakingProps.lockShareCoef,
+            stakingProps.lockPeriodCoef,
+            stakingProps.maxLocks
+        ); 
+    }
+
+    //TODO: Think about this more.
+    function createStreamStaking(
+        bytes32 templateId,
         address streamOwner,
         address rewardToken,
         uint256 maxDepositAmount,
@@ -146,7 +216,7 @@ contract StakingFactory {
         uint256 tau,
         uint256 rewardTokenAmount
     ) external {
-        StakingPackage staking = StakingPackage(FTHMStakingAddress[FTHMSTAKING]);
+        IStaking staking = IStaking(StakingTemplateAddress[templateId]);
         IVault vault = IVault(vaultAddress[address(staking)]);
         vault.addSupportedToken(rewardToken);
         
@@ -158,46 +228,17 @@ contract StakingFactory {
                               scheduleRewards, 
                               tau);
 
-        IERC20(rewardToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            rewardTokenAmount
-        );
-        IERC20(rewardToken).safeApprove(
-            address(staking),
-            rewardTokenAmount
-        );
-        uint256 streamId = staking.getStreamLength();
-        staking.createStream(streamId, rewardTokenAmount);
-    }
+        if(rewardTokenAmount > 0){
+            IERC20(rewardToken).safeTransferFrom(
+                msg.sender,
+                address(this),
+                rewardTokenAmount
+            );
+        }
 
-    function createStreamXDCStaking(
-        address streamOwner,
-        address rewardToken,
-        uint256 maxDepositAmount,
-        uint256 minDepositAmount,
-        uint256[] memory scheduleTimes,
-        uint256[] memory scheduleRewards,
-        uint256 tau,
-        uint256 rewardTokenAmount
-    ) external {
-        XDCStakingHandler staking = XDCStakingHandler(XDCStakingAddress[XDCSTAKING]);
-        IVault vault = IVault(vaultAddress[address(staking)]);
-        vault.addSupportedToken(rewardToken);
+        uint256 remainingBalance = IERC20(rewardToken).balanceOf(address(this));
+        require(remainingBalance >= rewardTokenAmount,"insufficient reward tokena mount");
         
-        staking.proposeStream(streamOwner, 
-                              rewardToken, 
-                              maxDepositAmount, 
-                              minDepositAmount, 
-                              scheduleTimes, 
-                              scheduleRewards, 
-                              tau);
-
-        IERC20(rewardToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            rewardTokenAmount
-        );
         IERC20(rewardToken).safeApprove(
             address(staking),
             rewardTokenAmount
@@ -206,5 +247,13 @@ contract StakingFactory {
         staking.createStream(streamId, rewardTokenAmount);
     }
 
+    function addERC20StakingTemplate(
+        bytes32 templateId,
+        address staking
+    ) external {
+        address stakingAddr = StakingTemplateAddress[templateId];
+        require(stakingAddr == address(0x00),"not empty staking address");
+        StakingTemplateAddress[templateId] = staking;
+    }
     
 }
