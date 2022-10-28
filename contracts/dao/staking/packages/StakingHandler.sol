@@ -152,7 +152,6 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
      * stream owner must approve reward tokens to this contract.
      * @param streamId stream id
      */
-     //TODO: TransferFrom
     function createStream(uint256 streamId, uint256 rewardTokenAmount) external override pausable(1) {
         Stream storage stream = streams[streamId];
 
@@ -231,6 +230,8 @@ contract StakingHandlers is StakingStorage, IStakingHandler, IStakingSetter, Sta
         _lock(msg.sender, _newLock, amount);
         IERC20(fthmToken).transferFrom(msg.sender, address(vault), amount);
     }
+
+    
     
 
     /**
