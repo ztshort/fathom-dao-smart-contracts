@@ -25,7 +25,7 @@ const staker_2 = accounts[4];
 const staker_3 = accounts[5];
 const staker_4 = accounts[6];
 
-const stream_manager = accounts[7];
+const stream_manager = accounts[7];2
 const stream_rewarder_1 = accounts[8];
 const stream_rewarder_2 = accounts[9];
 

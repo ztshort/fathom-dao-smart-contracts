@@ -19,11 +19,7 @@ contract StakingFactory is IStakingFactory, AccessControl{
         bool exists;
         bytes32 templateId;
     }
-
     
-    
-    bytes32 internal constant FTHMSTAKING = keccak256("FTHM_STAKING");
-    bytes32 internal constant XDCSTAKING = keccak256("XDC_STAKING");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     bool private initialised;
@@ -53,8 +49,8 @@ contract StakingFactory is IStakingFactory, AccessControl{
         uint256[] memory scheduleTimes,
         uint256[] memory scheduleRewards,
         StakingProperties memory stakingProps
-    ) override external  onlyRole(ADMIN_ROLE){
-        
+    ) override external onlyRole(ADMIN_ROLE){
+        revert(".....is it here?");
         _createStakingFTHM(
             templateId,
             vault,
@@ -132,7 +128,40 @@ contract StakingFactory is IStakingFactory, AccessControl{
             stakingProps);
     }
 
-    function addERC20StakingTemplate(
+    function createStreamAndStaking(
+        ERC20StakingStreamProperties memory stakingStreamProperties,
+        ERC20Weight memory weight,
+        StakingProperties memory stakingProps,
+        uint256[] memory stakingScheduleTimes,
+        uint256[] memory stakingScheduleRewards,
+        uint256[] memory streamScheduleTimes,
+        uint256[] memory streamScheduleRewards,
+        StreamProperties memory streamProps
+    ) external override {
+        _createStream(
+            streamProps.templateId,
+            streamProps.streamOwner,
+            streamProps.rewardToken,
+            streamProps.maxDepositAmount,
+            streamProps.minDepositAmount,
+            streamScheduleTimes,
+            streamScheduleRewards,
+            streamProps.tau,
+            streamProps.rewardTokenAmount
+        );
+
+        _createERC20Staking(
+            stakingStreamProperties.templateId, 
+            stakingStreamProperties.vault, 
+            stakingStreamProperties.erc20, 
+            weight, 
+            stakingStreamProperties.streamOwner, 
+            stakingScheduleTimes, 
+            stakingScheduleRewards, 
+            stakingProps);
+    }
+
+    function addStakingTemplate(
         bytes32 templateId,
         address staking
     ) override external onlyRole(ADMIN_ROLE){
@@ -169,6 +198,10 @@ contract StakingFactory is IStakingFactory, AccessControl{
         address staking = StakingTemplateAddress[templateId];
         require(staking != address(0x00),"empty staking address");
         IStaking FTHMStaking = IStaking(_deployStaking(templateId,staking));
+
+        stakingInfo[address(staking)] = Staking(true, templateId);
+        stakings.push(address(staking));
+
         require(vault != address(0x00),"vault address 0");
         IAccessControl(veFTHM).grantRole(MINTER_ROLE, address(FTHMStaking));
         IERC20(fthmToken).safeTransferFrom(
@@ -217,6 +250,10 @@ contract StakingFactory is IStakingFactory, AccessControl{
         require(staking != address(0x00),"empty staking address");
         address stakingProxy = _deployStaking(templateId,staking);
         IXDCStaking XDCStaking = IXDCStaking(stakingProxy);
+
+        stakingInfo[address(staking)] = Staking(true, templateId);
+        stakings.push(address(staking));
+
         //TODO: Transfer WXDC Token to vault
         IERC20(wXDC).safeTransferFrom(
             msg.sender,
@@ -261,7 +298,7 @@ contract StakingFactory is IStakingFactory, AccessControl{
         address stakingProxy = _deployStaking(templateId,staking);
 
         IERC20Staking stakingContract = IERC20Staking(stakingProxy);
-        stakingInfo[address(staking)] = Staking(true, FTHMSTAKING);
+        stakingInfo[address(staking)] = Staking(true, templateId);
         stakings.push(address(staking));
         //TODO: This needed???
         StakingTemplateAddress[templateId] = address(staking);
@@ -339,39 +376,5 @@ contract StakingFactory is IStakingFactory, AccessControl{
         );
         uint256 streamId = staking.getStreamLength();
         staking.createStream(streamId, rewardTokenAmount);
-    }
-   
-    function createStreamAndStaking(
-        ERC20StakingStreamProperties memory stakingStreamProperties,
-        ERC20Weight memory weight,
-        
-        StakingProperties memory stakingProps,
-        uint256[] memory stakingScheduleTimes,
-        uint256[] memory stakingScheduleRewards,
-        uint256[] memory streamScheduleTimes,
-        uint256[] memory streamScheduleRewards,
-        StreamProperties memory streamProps
-    ) external{
-        _createStream(
-            streamProps.templateId,
-            streamProps.streamOwner,
-            streamProps.rewardToken,
-            streamProps.maxDepositAmount,
-            streamProps.minDepositAmount,
-            streamScheduleTimes,
-            streamScheduleRewards,
-            streamProps.tau,
-            streamProps.rewardTokenAmount
-        );
-
-        _createERC20Staking(
-            stakingStreamProperties.templateId, 
-            stakingStreamProperties.vault, 
-            stakingStreamProperties.erc20, 
-            weight, 
-            stakingStreamProperties.streamOwner, 
-            stakingScheduleTimes, 
-            stakingScheduleRewards, 
-            stakingProps);
     }
 }

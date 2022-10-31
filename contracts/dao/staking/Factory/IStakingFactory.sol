@@ -87,8 +87,19 @@ interface IStakingFactory {
         uint256 tau,
         uint256 rewardTokenAmount) external;
 
-    function addERC20StakingTemplate(
+    function addStakingTemplate(
         bytes32 templateId,
         address staking
+    ) external;
+
+    function createStreamAndStaking(
+        ERC20StakingStreamProperties memory stakingStreamProperties,
+        ERC20Weight memory weight,
+        StakingProperties memory stakingProps,
+        uint256[] memory stakingScheduleTimes,
+        uint256[] memory stakingScheduleRewards,
+        uint256[] memory streamScheduleTimes,
+        uint256[] memory streamScheduleRewards,
+        StreamProperties memory streamProps
     ) external;
 }
